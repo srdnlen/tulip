@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { useState, useRef, useEffect } from "react";
 import { useHotkeys } from 'react-hotkeys-hook';
+import { FetchBaseQueryError } from '@reduxjs/toolkit/query'
 import { Flow } from "../types";
 import {
   SERVICE_FILTER_KEY,
@@ -16,7 +17,7 @@ import {
   FORCE_REFETCH_ON_STAR,
 } from "../const";
 import { useAppSelector, useAppDispatch } from "../store";
-import { toggleFilterTag } from "../store/filter";
+import { toggleFilterTag, toggleTagIntersectMode } from "../store/filter";
 
 import { HeartIcon, FilterIcon, LinkIcon } from "@heroicons/react/solid";
 import { HeartIcon as EmptyHeartIcon } from "@heroicons/react/outline";
@@ -44,11 +45,11 @@ export function FlowList() {
   const { data: availableTags } = useGetTagsQuery();
   const { data: services } = useGetServicesQuery();
 
-  const filterTags = useAppSelector((state) => state.filter.filterTags);
   const filterFlags = useAppSelector((state) => state.filter.filterFlags);
   const filterFlagids = useAppSelector((state) => state.filter.filterFlagids);
   const includeTags = useAppSelector((state) => state.filter.includeTags);
   const excludeTags = useAppSelector((state) => state.filter.excludeTags);
+  const tagIntersectionMode = useAppSelector((state) => state.filter.tagIntersectionMode);
 
   const dispatch = useAppDispatch();
 
@@ -67,25 +68,45 @@ export function FlowList() {
 
   const debounced_text_filter = useDebounce(text_filter, 300);
 
-  const { data: flowData, isLoading, refetch } = useGetFlowsQuery(
+  const {
+    data: flowData, error: flowQueryError,
+    isLoading, isFetching, refetch,
+    startedTimeStamp, fulfilledTimeStamp,
+  } = useGetFlowsQuery(
     {
-      "flow.data": debounced_text_filter,
-      dst_ip: service?.ip,
-      dst_port: service?.port,
-      from_time: from_filter,
-      to_time: to_filter,
-      service: "", // FIXME
-      tags: filterTags,
+      regex_insensitive: debounced_text_filter,
+      ip_dst: service?.ip,
+      port_dst: service?.port,
+      time_from: from_filter ? new Date(parseInt(from_filter)).toISOString() : undefined,
+      time_to: to_filter ? new Date(parseInt(to_filter)).toISOString() : undefined,
+      tags_include: includeTags,
+      tags_exclude: excludeTags,
+      tag_intersection_mode: tagIntersectionMode,
       flags: filterFlags,
       flagids: filterFlagids,
-      includeTags: includeTags,
-      excludeTags: excludeTags
     },
     {
       refetchOnMountOrArgChange: true,
       pollingInterval: FLOW_LIST_REFETCH_INTERVAL_MS,
     }
   );
+
+  interface FlowQueryError { error: string }
+  const isFetchBaseQueryError = (error: unknown): error is FetchBaseQueryError =>
+    typeof error === 'object' && error != null && 'status' in error
+  const isFlowQueryError = (error: unknown): error is FlowQueryError =>
+    typeof error === 'object' && error != null && 'error' in error
+  const flowQueryErrorMessage = isFetchBaseQueryError(flowQueryError)
+    && isFlowQueryError(flowQueryError.data)
+    ? flowQueryError.data.error : null;
+
+  let searchMessage = null;
+  if(isFetching)
+    searchMessage = "Searching...";
+  else if(flowQueryErrorMessage)
+    searchMessage = `Error: ${flowQueryErrorMessage}`;
+  else if(startedTimeStamp && fulfilledTimeStamp)
+    searchMessage = `Search took ${fulfilledTimeStamp - startedTimeStamp}ms`
 
   // TODO: fix the below transformation - move it to server
   // Diederik gives you a beer once it has been fixed
@@ -97,7 +118,7 @@ export function FlowList() {
   }));
 
   const onHeartHandler = async (flow: Flow) => {
-    await starFlow({ id: flow._id.$oid, star: !flow.tags.includes("starred") });
+    await starFlow({ id: flow.id, star: !flow.tags.includes("starred") });
     if(FORCE_REFETCH_ON_STAR) refetch();
   };
 
@@ -109,7 +130,7 @@ export function FlowList() {
         behavior: 'auto',
         done: () => {
           if (transformedFlowData && transformedFlowData[flowIndex ?? 0]) {
-            let idAtIndex = transformedFlowData[flowIndex ?? 0]._id.$oid;
+            let idAtIndex = transformedFlowData[flowIndex ?? 0].id;
             // if the current flow ID at the index indeed did change (ie because of keyboard navigation), we need to update the URL as well as local ID
             if (idAtIndex !== openedFlowID) {
               navigate(`/flow/${idAtIndex}?${searchParams}`)
@@ -132,7 +153,7 @@ export function FlowList() {
         setTransformedFlowDataLength(transformedFlowData?.length)
 
         for (let i = 0; i < transformedFlowData?.length; i++) {
-          if (transformedFlowData[i]._id.$oid === openedFlowID) {
+          if (transformedFlowData[i].id === openedFlowID) {
             if (i !== flowIndex) {
               setFlowIndex(i)
             }
@@ -155,9 +176,9 @@ export function FlowList() {
   useHotkeys('j', () => setFlowIndex(fi => Math.min((transformedFlowData?.length ?? 1)-1, fi + 1)), [transformedFlowData?.length]);
   useHotkeys('w', () => {
     if(transformedFlowData) {
-      let idAtIndex = transformedFlowData[flowIndex ?? 0]._id.$oid;
+      let idAtIndex = transformedFlowData[flowIndex ?? 0].id;
       if (idAtIndex != openedFlowID) {
-        let flowids = flowData?.map((flow, idx) => ([flow._id.$oid, idx]))
+        let flowids = flowData?.map((flow, idx) => ([flow.id, idx]))
         if (flowids) {
           let found = flowids.filter((el)=>(el[0] == openedFlowID))
           if (found.length > 0) {
@@ -211,9 +232,17 @@ export function FlowList() {
         </div>
         {showFilters && (
           <div className="border-t-gray-300 border-t p-2">
-            <p className="text-sm font-bold text-gray-600 pb-2">
-              Intersection filter
-            </p>
+            <div className="flex">
+              <p className="text-sm font-bold text-gray-600 pb-2">
+                Intersection filter
+              </p>
+              <button
+                className="w-24 h-5 bg-blue-100 text-sm rounded-md ml-auto"
+                onClick={() => dispatch(toggleTagIntersectMode())}
+              >
+                Mode:&nbsp;{tagIntersectionMode}
+              </button>
+            </div>
             <div className="flex gap-2 flex-wrap">
               {(availableTags ?? []).map((tag) => (
                 <Tag
@@ -229,6 +258,7 @@ export function FlowList() {
         )}
       </div>
       <div></div>
+      { searchMessage && <div>{searchMessage}</div> }
       <Virtuoso
         className={classNames({
           "flex-1": true,
@@ -240,16 +270,16 @@ export function FlowList() {
         initialTopMostItemIndex={flowIndex}
         itemContent={(index, flow) => (
           <Link
-            to={`/flow/${flow._id.$oid}?${searchParams}`}
+            to={`/flow/${flow.id}?${searchParams}`}
             onClick={() => setFlowIndex(index)}
-            key={flow._id.$oid}
+            key={flow.id}
             className="focus-visible:rounded-md"
             //style={{ paddingTop: '1em' }}
           >
             <FlowListEntry
-              key={flow._id.$oid}
+              key={flow.id}
               flow={flow}
-              isActive={flow._id.$oid === openedFlowID}
+              isActive={flow.id === openedFlowID}
               onHeartClick={onHeartHandler}
             />
           </Link>
@@ -269,7 +299,8 @@ function FlowListEntry({ flow, isActive, onHeartClick }: FlowListEntryProps) {
   const formatted_time_h_m_s = format(new Date(flow.time), "HH:mm:ss");
   const formatted_time_ms = format(new Date(flow.time), ".SSS");
 
-  const isStarred = flow.tags.includes("starred");
+  const [isStarred, setStarred] = useState(flow.tags.includes("starred"));
+
   // Filter tag list for tags that are handled specially
   const filtered_tag_list = flow.tags.filter((t) => t != "starred");
 
@@ -289,10 +320,11 @@ function FlowListEntry({ flow, isActive, onHeartClick }: FlowListEntryProps) {
         <div
           className="w-5 ml-1 mr-1 self-center shrink-0"
           onClick={() => {
+            setStarred(!isStarred);
             onHeartClick(flow);
           }}
         >
-          {flow.tags.includes("starred") ? (
+          {isStarred ? (
             <HeartIcon className="text-red-500" />
           ) : (
             <EmptyHeartIcon />
@@ -300,8 +332,7 @@ function FlowListEntry({ flow, isActive, onHeartClick }: FlowListEntryProps) {
         </div>
 
         <div className="w-5 mr-2 self-center shrink-0">
-          {flow.child_id.$oid != "000000000000000000000000" ||
-          flow.parent_id.$oid != "000000000000000000000000" ? (
+          {flow.child_id != null || flow.parent_id != null ? (
             <LinkIcon className="text-blue-500" />
           ) : undefined}
         </div>

@@ -13,7 +13,7 @@ const shortcutTableData = [
   [
     { key: 'd', action: '(D)iff view' },
     { key: 'f', action: 'Load flow to (f)irst diff slot' },
-    { key: 'e', action: 'Load flow to s(e)ond diff slot' },
+    { key: 'e', action: 'Load flow to s(e)cond diff slot' },
     { key: 'g', action: '(G)raph view' },
   ],
   [

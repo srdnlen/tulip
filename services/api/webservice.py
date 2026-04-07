@@ -22,11 +22,11 @@
 # along with Flower.  If not, see <https://www.gnu.org/licenses/>.
 
 import dataclasses
-from datetime import timedelta, datetime, timezone
 import os
 import re
 import traceback
 import uuid
+from datetime import datetime, timedelta, timezone
 from ipaddress import ip_network
 from pathlib import Path
 
@@ -38,7 +38,8 @@ from requests import get
 import database
 import json_util
 from configurations import (
-    dump_pcaps_dir, flag_lifetime,
+    dump_pcaps_dir,
+    flag_lifetime,
     flag_regex,
     services,
     start_date,
@@ -137,19 +138,26 @@ def getStats():
         )
 
     # Converting time-based queries to tick-based queries
-    if time_from or time_to:
-        tick_first = dateutil.parser.parse(start_date)
-        tick_length_delta = timedelta(milliseconds=int(tick_length))
+    try:
+        if time_from or time_to:
+            tick_first = dateutil.parser.parse(start_date)
+            tick_length_delta = timedelta(milliseconds=int(tick_length))
 
-        if time_from:
-            ms_from = int(time_from)
-            parsed_time_from = datetime.fromtimestamp(ms_from / 1000.0, tz=timezone.utc)
-            tick_from = ((parsed_time_from - tick_first) // tick_length_delta) + 1
+            if time_from:
+                ms_from = int(time_from)
+                parsed_time_from = datetime.fromtimestamp(
+                    ms_from / 1000.0, tz=timezone.utc
+                )
+                tick_from = ((parsed_time_from - tick_first) // tick_length_delta) + 1
 
-        if time_to:
-            ms_to = int(time_to)
-            parsed_time_to = datetime.fromtimestamp(ms_to / 1000.0, tz=timezone.utc)
-            tick_to = ((parsed_time_to - tick_first) // tick_length_delta) + 1
+            if time_to:
+                ms_to = int(time_to)
+                parsed_time_to = datetime.fromtimestamp(ms_to / 1000.0, tz=timezone.utc)
+                tick_to = ((parsed_time_to - tick_first) // tick_length_delta) + 1
+    except ValueError:
+        return return_json_response(
+            {"error": "The provided date is invalid"}, status=400
+        )
 
     query = database.StatsQuery(
         service=query.get("service"),

@@ -18,6 +18,11 @@ services:
     # This does not need to be adjusted, unless you actually want to limit it
     # Postgres uses shared memory for caching, and docker assigns just 64 MB by default
     shm_size: "128g"
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build:
@@ -30,8 +35,10 @@ services:
     expose:
       - 3000
     depends_on:
-      - timescale
-      - api
+      timescale:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     networks:
       - internal
     environment:
@@ -45,7 +52,8 @@ services:
     image: tulip-api:latest
     restart: unless-stopped
     depends_on:
-      - timescale
+      timescale:
+        condition: service_healthy
     networks:
       - internal
     volumes:
@@ -57,6 +65,12 @@ services:
       TICK_START: ${TICK_START}
       TICK_LENGTH: ${TICK_LENGTH}
       VM_IP: ${VM_IP}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
 
   flagids:
     restart: unless-stopped
@@ -64,7 +78,8 @@ services:
       context: services/flagids
     image: tulip-flagids:latest
     depends_on:
-      - timescale
+      timescale:
+        condition: service_healthy
     networks:
       - internal
     environment:
@@ -84,7 +99,8 @@ services:
     image: tulip-assembler:latest
     restart: unless-stopped
     depends_on:
-      - timescale
+      timescale:
+        condition: service_healthy
     networks:
       - internal
     volumes:
@@ -121,7 +137,8 @@ services:
     image: tulip-enricher:latest
     restart: unless-stopped
     depends_on:
-      - timescale
+      timescale:
+        condition: service_healthy
     networks:
       - internal
     volumes:

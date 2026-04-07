@@ -38,8 +38,7 @@ from requests import get
 import database
 import json_util
 from configurations import (
-    dump_pcaps_dir,
-    flag_lifetime,
+    dump_pcaps_dir, flag_lifetime,
     flag_regex,
     services,
     start_date,
@@ -138,13 +137,6 @@ def getStats():
         )
 
     # Converting time-based queries to tick-based queries
-    print(
-        "Received stats query with time_from:",
-        time_from,
-        "time_to:",
-        time_to,
-        flush=True,
-    )
     if time_from or time_to:
         tick_first = dateutil.parser.parse(start_date)
         tick_length_delta = timedelta(milliseconds=int(tick_length))
@@ -158,9 +150,6 @@ def getStats():
             ms_to = int(time_to)
             parsed_time_to = datetime.fromtimestamp(ms_to / 1000.0, tz=timezone.utc)
             tick_to = ((parsed_time_to - tick_first) // tick_length_delta) + 1
-
-        print("From:", time_from, "parsed as", tick_from, flush=True)
-        print("To:", time_to, "parsed as", tick_to, flush=True)
 
     query = database.StatsQuery(
         service=query.get("service"),

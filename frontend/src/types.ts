@@ -68,9 +68,11 @@ export interface FlowsQuery {
 }
 
 export interface StatsQuery {
-  service: string;
-  tick_from: number;
-  tick_to: number;
+  service?: string;
+  tick_from?: number;
+  tick_to?: number;
+  time_from?: number;
+  time_to?: number;
 }
 
 export interface Stats {

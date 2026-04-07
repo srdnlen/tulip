@@ -111,6 +111,8 @@ export const tulipApi = createApi({
           service: query.service,
           tick_from: query.tick_from,
           tick_to: query.tick_to,
+          time_from: query.time_from,
+          time_to: query.time_to,
         }
       })
     }),

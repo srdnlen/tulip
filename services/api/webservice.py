@@ -8,7 +8,6 @@
 # Copyright ©2018 Brunello Simone
 # Copyright ©2018 Alessio Marotta
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
-#
 # Flower is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -23,6 +22,7 @@
 # along with Flower.  If not, see <https://www.gnu.org/licenses/>.
 
 import dataclasses
+from datetime import timedelta, datetime, timezone
 import os
 import re
 import traceback
@@ -124,10 +124,48 @@ def query():
 def getStats():
     query = request.args
 
+    tick_from = query.get("tick_from", type=int)
+    tick_to = query.get("tick_to", type=int)
+    time_from = query.get("time_from")
+    time_to = query.get("time_to")
+
+    if (tick_from or tick_to) and (time_from or time_to):
+        return return_json_response(
+            {
+                "error": "Specify either tick_from/tick_to or time_from/time_to, not both",
+            },
+            status=400,
+        )
+
+    # Converting time-based queries to tick-based queries
+    print(
+        "Received stats query with time_from:",
+        time_from,
+        "time_to:",
+        time_to,
+        flush=True,
+    )
+    if time_from or time_to:
+        tick_first = dateutil.parser.parse(start_date)
+        tick_length_delta = timedelta(milliseconds=int(tick_length))
+
+        if time_from:
+            ms_from = int(time_from)
+            parsed_time_from = datetime.fromtimestamp(ms_from / 1000.0, tz=timezone.utc)
+            tick_from = ((parsed_time_from - tick_first) // tick_length_delta) + 1
+
+        if time_to:
+            ms_to = int(time_to)
+            parsed_time_to = datetime.fromtimestamp(ms_to / 1000.0, tz=timezone.utc)
+            tick_to = ((parsed_time_to - tick_first) // tick_length_delta) + 1
+
+        print("From:", time_from, "parsed as", tick_from, flush=True)
+        print("To:", time_to, "parsed as", tick_to, flush=True)
+
     query = database.StatsQuery(
         service=query.get("service"),
-        tick_from=int(query["tick_from"]) if "tick_from" in query else None,
-        tick_to=int(query["tick_to"]) if "tick_to" in query else None,
+        tick_from=int(tick_from) if tick_from else None,
+        tick_to=int(tick_to) if tick_to else None,
     )
 
     with db.connection() as c:

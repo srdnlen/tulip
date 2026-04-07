@@ -295,6 +295,7 @@ class Connection(psycopg.Connection):
         time_end = tick_first + (tick_end * tick_length)
 
         stats: dict[int, Stats] = {i: Stats(i) for i in range(tick_start, tick_end)}
+        sql_query: str = ""
 
         parameters = {
             "tick_length": tick_length,
@@ -303,12 +304,25 @@ class Connection(psycopg.Connection):
             "time_end": time_end,
         }
 
-        sql_query = """
+        where_clauses = [
+            "f.id > fid_pack_low(%(time_start)s)",
+            "f.id < fid_pack_high(%(time_end)s)",
+        ]
+
+        if query.service is not None:
+            # Filter the service port from taken the configurations
+            for s in configurations.services:
+                if s["name"].lower() == query.service.lower():
+                    parameters["service_port"] = s["port"]
+                    where_clauses.append("f.port_dst = %(service_port)s")
+                    break
+
+        # Build the where clause based on whether the service is specified or not
+        sql_query = f"""
             SELECT tick_number_bucket(%(tick_first)s, %(tick_length)s, time) AS tick,
                 count(id) AS count, sum(flags_in) AS flags_in, sum(flags_out) AS flags_out
             FROM flow AS f
-            WHERE f.id > fid_pack_low(%(time_start)s)
-                AND f.id < fid_pack_high(%(time_end)s)
+            WHERE {" AND ".join(where_clauses)}
             GROUP BY tick
         """
         with self.cursor(row_factory=dict_row) as cursor:
@@ -318,15 +332,14 @@ class Connection(psycopg.Connection):
                 stats[row["tick"]].flag_out = row["flags_out"]
 
         # TODO: Maybe count all tags? The query already selects the numbers
-        sql_query = """
+        sql_query = f"""
             SELECT tick_time_bucket(%(tick_first)s, %(tick_length)s, time) AS tick_start,
                 tick_number_bucket(%(tick_first)s, %(tick_length)s, time) AS tick,
                 t.name AS tag, count(f.id) AS count
             FROM flow AS f
             JOIN tag AS t
                 ON f.tags ? t.name
-            WHERE f.id > fid_pack_low(%(time_start)s)
-                AND f.id < fid_pack_high(%(time_end)s)
+            WHERE {" AND ".join(where_clauses)}
             GROUP BY tick_start, tick, t.name
             ORDER BY tick ASC
         """

@@ -5,10 +5,10 @@ services:
     image: tulip-timescale:latest
     restart: unless-stopped
     volumes:
-    - timescale-data:/var/lib/postgresql/data
-    - ./services/schema/system.sql:/docker-entrypoint-initdb.d/100_system.sql:ro
-    - ./services/schema/functions.sql:/docker-entrypoint-initdb.d/101_functions.sql:ro
-    - ./services/schema/schema.sql:/docker-entrypoint-initdb.d/102_schema.sql:ro
+      - timescale-data:/var/lib/postgresql/data
+      - ./services/schema/system.sql:/docker-entrypoint-initdb.d/100_system.sql:ro
+      - ./services/schema/functions.sql:/docker-entrypoint-initdb.d/101_functions.sql:ro
+      - ./services/schema/schema.sql:/docker-entrypoint-initdb.d/102_schema.sql:ro
     networks:
       - internal
     environment:
@@ -17,7 +17,7 @@ services:
       POSTGRES_DB: tulip
     # This does not need to be adjusted, unless you actually want to limit it
     # Postgres uses shared memory for caching, and docker assigns just 64 MB by default
-    shm_size: '128g'
+    shm_size: "128g"
 
   frontend:
     build:
@@ -135,3 +135,4 @@ volumes:
 
 networks:
   internal:
+    internal: false

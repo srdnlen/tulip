@@ -27,28 +27,28 @@ import os
 import re
 import traceback
 import uuid
-from flask import Flask, Response, send_file
-from requests import get
-import dateutil.parser
 from ipaddress import ip_network
+from pathlib import Path
 
+import dateutil.parser
+from flask import Flask, Response, request, send_file
+from flask_cors import CORS
+from requests import get
+
+import database
+import json_util
 from configurations import (
-    services,
-    traffic_dir,
-    start_date,
-    tick_length,
-    visualizer_url,
+    dump_pcaps_dir,
     flag_lifetime,
     flag_regex,
-    dump_pcaps_dir,
+    services,
+    start_date,
+    tick_length,
+    traffic_dir,
+    visualizer_url,
 )
-from pathlib import Path
 from data2req import convert_flow_to_http_requests, convert_single_http_requests
-from flask_cors import CORS
-from flask import request
-
 from flow2pwn import flow2pwn
-import database, json_util
 
 application = Flask(__name__)
 CORS(application)
@@ -103,7 +103,8 @@ def query():
             ),
             tags_include=[str(elem) for elem in query.get("tags_include", [])],
             tags_exclude=[str(elem) for elem in query.get("tags_exclude", [])],
-            tag_intersection_and=query.get("tag_intersection_mode", "").lower() == "and",
+            tag_intersection_and=query.get("tag_intersection_mode", "").lower()
+            == "and",
         )
     except re.error as error:
         return return_json_response(
@@ -303,9 +304,11 @@ def downloadFile():
             )
         )
 
+
 def create_app():
     db.open()
     return application
+
 
 if __name__ == "__main__":
     try:

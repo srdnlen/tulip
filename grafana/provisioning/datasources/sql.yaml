@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: Tulip Timescale
+    uid: tulip-timescale
+    type: postgres
+    url: timescale:5432
+    user: tulip
+    database: tulip
+    isDefault: true
+    editable: true
+    jsonData:
+      database: tulip
+      sslmode: disable
+      postgresVersion: 1500
+      timescaledb: true

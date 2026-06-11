@@ -2,7 +2,7 @@ version: "3.5"
 services:
   timescale:
     build: services/timescale
-    image: tulip-timescale:latest
+    image: ghcr.io/srdnlen/tulip-timescale
     restart: unless-stopped
     volumes:
       - timescale-data:/var/lib/postgresql/data
@@ -26,10 +26,10 @@ services:
       start_period: 10s
 
   frontend:
+    image: ghcr.io/srdnlen/tulip-frontend
     build:
       context: frontend
       dockerfile: Dockerfile-frontend
-    image: tulip-frontend:latest
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -46,11 +46,38 @@ services:
       API_SERVER_ENDPOINT: http://api:5000/
       VIRTUAL_HOST: tulip.h4xx.eu
 
+  grafana:
+    image: grafana/grafana:12.4
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    expose:
+      - 3000
+    depends_on:
+      timescale:
+        condition: service_healthy
+    networks:
+      - internal
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards/home.json:/var/lib/grafana/dashboards/home.json:ro
+    environment:
+      GF_SERVER_HTTP_PORT: 3000
+      GF_LOG_LEVEL: warn
+      GF_ANALYTICS_CHECK_FOR_PLUGINS_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_HIDE_VERSION: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/home.json
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+
   api:
+    image: ghcr.io/srdnlen/tulip-api
     build:
       context: services/api
       dockerfile: Dockerfile-api
-    image: tulip-api:latest
     restart: unless-stopped
     depends_on:
       timescale:
@@ -74,10 +101,10 @@ services:
       start_period: 20s
 
   flagids:
+    image: ghcr.io/srdnlen/tulip-flagids
     restart: unless-stopped
     build:
       context: services/flagids
-    image: tulip-flagids:latest
     depends_on:
       timescale:
         condition: service_healthy
@@ -94,10 +121,10 @@ services:
       DUMP_PCAPS: ${DUMP_PCAPS}
 
   assembler:
+    image: ghcr.io/srdnlen/tulip-assembler
     build:
       context: services/go-importer
       dockerfile: Dockerfile-assembler
-    image: tulip-assembler:latest
     restart: unless-stopped
     depends_on:
       timescale:
@@ -132,6 +159,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   enricher:
+    image: ghcr.io/srdnlen/tulip-enricher
     build:
       context: services/go-importer
       dockerfile: Dockerfile-enricher
@@ -152,13 +180,18 @@ services:
       ENRICHER_WORKERS: ${ENRICHER_WORKERS}
       ENRICHER_BUFFER_SIZE: ${ENRICHER_BUFFER_SIZE}
     healthcheck:
-      test: ["CMD-SHELL", "test -S /suricata/eve.sock || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'if [ "$ENRICHER_MODE" = "file" ]; then exit 0; else test -S /suricata/eve.sock || exit 1; fi',
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 5s
 
   suricata:
+    image: ghcr.io/srdnlen/tulip-suricata
     build:
       context: suricata
       dockerfile: Dockerfile.suricata
@@ -179,6 +212,7 @@ services:
 
 volumes:
   timescale-data:
+  grafana-data:
 
 networks:
   internal:

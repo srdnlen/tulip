@@ -132,4 +132,7 @@ workspace.xml
 .idea
 
 /traffic
-suricata
+suricata/etc/**
+suricata/lib/**
+suricata/log/**
+suricata/socket/**

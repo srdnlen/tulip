@@ -144,12 +144,13 @@ services:
     volumes:
       - ${TRAFFIC_DIR_HOST}:${TRAFFIC_DIR_DOCKER}:ro,z
       - ${SURICATA_DIR_HOST}/socket:/suricata
+      - ${SURICATA_DIR_HOST}/log:/log
     command: "./enricher -eve /suricata/eve.sock"
     environment:
-      ENRICHER_MODE: socket
+      ENRICHER_MODE: ${ENRICHER_MODE}
       TIMESCALE: ${TIMESCALE}
-      ENRICHER_WORKERS: 20
-      ENRICHER_BUFFER_SIZE: 150000
+      ENRICHER_WORKERS: ${ENRICHER_WORKERS}
+      ENRICHER_BUFFER_SIZE: ${ENRICHER_BUFFER_SIZE}
     healthcheck:
       test: ["CMD-SHELL", "test -S /suricata/eve.sock || exit 1"]
       interval: 10s

@@ -22,7 +22,8 @@ INSERT INTO tag (name) VALUES
 -- Flag ids
 CREATE TABLE flag_id (
 	id serial NOT NULL PRIMARY KEY,
-	content text NOT NULL,
+	content text UNIQUE NOT NULL,
+	flagstore text NOT NULL,
 	time timestamptz NOT NULL DEFAULT now()
 );
 

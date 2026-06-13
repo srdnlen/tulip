@@ -27,61 +27,61 @@ if flagid_scrape_enabled:
     print("  TEAM_ID: ", team_id)
     print("  FLAGID_ENDPOINT: ", flagid_endpoint)
     db = psycopg_pool.ConnectionPool(os.environ["TIMESCALE"])
-    print("CONNECTION TO MONGO ESTABLISHED", flush=True)
+    print("CONNECTION TO DB ESTABLISHED", flush=True)
 else:
     print("FLAGID SCRAPE DISABLED", flush=True)
 
+def extract_team_flagIds(data: dict):
+    # Traverse all the flagstores
+    for flagstore in data:
+        # Traverse ticks of flagstore
+        flagIdsForServiceOfOwnTeam = data[flagstore][team_id]
+        for tick in flagIdsForServiceOfOwnTeam:
+            # Get all flagid values
+            elem = flagIdsForServiceOfOwnTeam[tick]
 
-# get leaf nodes of a json data struct
-def get_leaf_nodes(data):
-    if isinstance(data, dict):
-        if team_id in data.keys():
-            yield from get_leaf_nodes(data[team_id])
-        elif team_id_is_digit and team_id_int in data.keys():
-            yield from get_leaf_nodes(data[team_id_int])
-        else:
-            for value in data.values():
-                yield from get_leaf_nodes(value)
-    elif isinstance(data, list):
-        if team_id in data or (team_id_is_digit and team_id_int in data):
-            yield
-        else:
-            for item in data:
-                print(item, end=" ", flush=True)
-                yield from get_leaf_nodes(item)
-    else:
-        # prevent id from being used as Flagids
-        yield data
+            if type(elem) is dict:
+                for key in elem:
+                    yield str(elem[key]), flagstore
+            elif type(elem) in (list, tuple):
+                for flagid in elem:
+                    yield str(flagid), flagstore
+            else:
+                yield str(elem)
 
 
 def update_flagids():
     assert db is not None
 
+    # Fetch data
     response = requests.get(flagid_endpoint)
-    rows = [(node,) for node in get_leaf_nodes(response.json()) if node is not None]
+    rows = [(flagId, flagStore) for (flagId, flagStore) in extract_team_flagIds(response.json())]
     print("Updating flagids: ", time.time(), f"({len(rows)})", flush=True)
 
+    # Insert into the database
     with db.connection() as conn:
         with conn.cursor() as cur:
-            cur.executemany("INSERT INTO flag_id (content) VALUES (%s)", rows)
+            cur.executemany("INSERT INTO flag_id (content, flagstore) VALUES (%s, %s) ON CONFLICT DO NOTHING", rows)
             conn.commit()
 
 
 def main():
-    start_datetime = datetime.strptime(start_date, "%Y-%m-%dT%H:%M:%S%z")
-    unixtime = time.mktime(start_datetime.timetuple())
+    start_datetime = datetime.strptime(start_date, r"%Y-%m-%dT%H:%M:%S.%fZ")
+    unixtime = start_datetime.timestamp()
+
     while True:
         try:
             if flagid_scrape_enabled:
                 update_flagids()
+
             crnt_time = time.time()
             time_diff = max(0, crnt_time - unixtime)
-            wait = (
-                DELAY
-                + tick_length * (time_diff // tick_length)
-                + time_diff % tick_length
-            )
+
+            wait = tick_length - (time_diff % tick_length) + DELAY
+
+            print("Sleeping:", wait, flush=True)
             time.sleep(wait)
+
         except Exception as e:
             print("ERROR: ", e, flush=True)
             time.sleep(10)

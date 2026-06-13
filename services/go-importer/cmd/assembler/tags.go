@@ -94,40 +94,55 @@ func ApplyFlagTags(flow *db.FlowEntry, reg *string, flagValidator FlagValidator)
 // Apply flagids to the entire flow.
 // This assumes the `Data` part of the flowItem is already pre-processed, s.t.
 func ApplyFlagids(flow *db.FlowEntry, flagidsDb []db.FlagId) {
+	println("[debug] ApplyFlagids: start")
+	println("[debug] ApplyFlagids: flagidsDb len =", len(flagidsDb))
 
-	var flagids []string
-	var matches = make(map[int]int)
+	if len(flagidsDb) == 0 {
+		return
+	}
 
-	for _, flagid := range flagidsDb {
-		flagids = append(flagids, flagid.Content)
+	flagids := make([]string, 0, len(flagidsDb))
+	flagidIndexMap := make([]int, 0, len(flagidsDb))
+	matches := make(map[int]struct{})
+
+	for i, fid := range flagidsDb {
+		if fid.Content == "" {
+			continue
+		}
+
+		flagids = append(flagids, fid.Content)
+		flagidIndexMap = append(flagidIndexMap, i)
+	}
+
+	if len(flagids) == 0 {
+		return
 	}
 
 	matcher := ahocorasick.NewStringMatcher(flagids)
+
 	for idx := 0; idx < len(flow.Flow); idx++ {
 		flowItem := &flow.Flow[idx]
+
 		found := matcher.Match([]byte(flowItem.Data))
 
-		if len(found) > 0 {
-			var tag string
-
-			if flowItem.From == "c" {
-				tag = "flagid-in"
-			} else {
-				tag = "flagid-out"
+		for _, match := range found {
+			if match < 0 || match >= len(flagidIndexMap) {
+				continue
 			}
 
-			// Add the tag if it doesn't already exist
-			if !contains(flow.Tags, tag) {
+			dbIndex := flagidIndexMap[match]
+			fid := flagidsDb[dbIndex]
+			tag := fid.Flagstore
+
+			if tag != "" && !contains(flow.Tags, tag) {
 				flow.Tags = append(flow.Tags, tag)
 			}
 
-			for _, match := range found {
-				matches[match] = 1
-			}
+			matches[dbIndex] = struct{}{}
 		}
 	}
 
-	for match, _ := range matches {
-		flow.Flagids = append(flow.Flagids, flagids[match])
+	for match := range matches {
+		flow.Flagids = append(flow.Flagids, flagidsDb[match].Content)
 	}
 }

@@ -31,7 +31,7 @@ if flagid_scrape_enabled:
 else:
     print("FLAGID SCRAPE DISABLED", flush=True)
 
-def extract_team_flagIds(data: dict):
+def extract_team_flag_ids(data: dict):
     # Traverse all the flagstores
     for flagstore in data:
         # Traverse ticks of flagstore
@@ -55,7 +55,7 @@ def update_flagids():
 
     # Fetch data
     response = requests.get(flagid_endpoint)
-    rows = [(flagId, flagStore) for (flagId, flagStore) in extract_team_flagIds(response.json())]
+    rows = [(flagId, flagStore) for (flagId, flagStore) in extract_team_flag_ids(response.json())]
     print("Updating flagids: ", time.time(), f"({len(rows)})", flush=True)
 
     # Insert into the database

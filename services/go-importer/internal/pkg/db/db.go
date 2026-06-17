@@ -594,7 +594,7 @@ type FlagId struct {
 	Id int32
 	Content string
 	Flagstore string
-	Dst_port *uin16
+	Dst_port *uint16
 	Time time.Time
 }
 

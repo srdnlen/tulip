@@ -55,7 +55,6 @@ def extract_team_flag_ids(data: dict):
     # Traverse all the flagstores
     for flagstore in data:
         port = FLAGSTORES_PORTS_LUT.get(flagstore, None)
-        print(FLAGSTORES_PORTS_LUT)
 
         # Traverse ticks of flagstore
         flagIdsForServiceOfOwnTeam = data[flagstore][team_id]
@@ -99,10 +98,7 @@ def main():
 
             crnt_time = time.time()
             time_diff = max(0, crnt_time - unixtime)
-
             wait = tick_length - (time_diff % tick_length) + DELAY
-
-            print("Sleeping:", wait, flush=True)
             time.sleep(wait)
 
         except Exception as e:

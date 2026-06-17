@@ -5,6 +5,7 @@ from datetime import datetime
 
 import psycopg_pool
 import requests
+import configurations
 
 DELAY = 5  # DELAY from start of tick
 tick_length = int(os.getenv("TICK_LENGTH", 10 * 1000)) // 1000
@@ -14,6 +15,25 @@ team_id_is_digit = team_id.isdigit()
 team_id_int = int(team_id) if team_id_is_digit else None
 flagid_endpoint = os.getenv("FLAGID_ENDPOINT", "http://localhost:8000/flagids.json")
 flagid_scrape_enabled = os.getenv("FLAGID_SCRAPE", "") != ""
+
+
+# DICT FORMAT: { "tulipservicename": ["flagstore1", "flagstore2"] }
+FLAGSTORES_MAPPINGS = {
+    "Pwnzerotti": ["Pwnzer0tt1Shop-Article", "Pwnzer0tt1Shop-User"],
+}
+
+#### Build lookup tables
+SERVICE_PORTS_LUT = {}
+# Lookup port in Tulip config
+for item in configurations.services:
+    SERVICE_PORTS_LUT[item['name']] = item['port']
+
+FLAGSTORES_PORTS_LUT = {}
+for service_name, flagstores in FLAGSTORES_MAPPINGS.items():
+    for store_name in flagstores:
+        FLAGSTORES_PORTS_LUT[store_name] = SERVICE_PORTS_LUT.get(service_name, None)
+####
+
 
 client = None
 db = None
@@ -34,6 +54,9 @@ else:
 def extract_team_flag_ids(data: dict):
     # Traverse all the flagstores
     for flagstore in data:
+        port = FLAGSTORES_PORTS_LUT.get(flagstore, None)
+        print(FLAGSTORES_PORTS_LUT)
+
         # Traverse ticks of flagstore
         flagIdsForServiceOfOwnTeam = data[flagstore][team_id]
         for tick in flagIdsForServiceOfOwnTeam:
@@ -42,12 +65,12 @@ def extract_team_flag_ids(data: dict):
 
             if type(elem) is dict:
                 for key in elem:
-                    yield str(elem[key]), flagstore
+                    yield str(elem[key]), flagstore, port
             elif type(elem) in (list, tuple):
                 for flagid in elem:
-                    yield str(flagid), flagstore
+                    yield str(flagid), flagstore, port
             else:
-                yield str(elem)
+                yield str(elem), port
 
 
 def update_flagids():
@@ -55,13 +78,13 @@ def update_flagids():
 
     # Fetch data
     response = requests.get(flagid_endpoint)
-    rows = [(flagId, flagStore) for (flagId, flagStore) in extract_team_flag_ids(response.json())]
+    rows = list(extract_team_flag_ids(response.json()))
     print("Updating flagids: ", time.time(), f"({len(rows)})", flush=True)
 
     # Insert into the database
     with db.connection() as conn:
         with conn.cursor() as cur:
-            cur.executemany("INSERT INTO flag_id (content, flagstore) VALUES (%s, %s) ON CONFLICT DO NOTHING", rows)
+            cur.executemany("INSERT INTO flag_id (content, flagstore, dst_port) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING", rows)
             conn.commit()
 
 

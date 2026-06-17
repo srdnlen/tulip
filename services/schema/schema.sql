@@ -13,8 +13,6 @@ INSERT INTO tag (name) VALUES
 	('http'),
 	('flag-in'),
 	('flag-out'),
-	('flagid-in'),
-	('flagid-out'),
 	('blocked'),
 	('suricata'),
 	('starred');
@@ -24,6 +22,7 @@ CREATE TABLE flag_id (
 	id serial NOT NULL PRIMARY KEY,
 	content text UNIQUE NOT NULL,
 	flagstore text NOT NULL,
+	dst_port int,
 	time timestamptz NOT NULL DEFAULT now()
 );
 

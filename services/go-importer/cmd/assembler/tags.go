@@ -134,6 +134,10 @@ func ApplyFlagids(flow *db.FlowEntry, flagidsDb []db.FlagId) {
 			fid := flagidsDb[dbIndex]
 			tag := fid.Flagstore
 
+			if fid.Dst_port != nil && flow.Dst_port != *fid.Dst_port {
+				continue
+			}
+
 			if tag != "" && !contains(flow.Tags, tag) {
 				flow.Tags = append(flow.Tags, tag)
 			}

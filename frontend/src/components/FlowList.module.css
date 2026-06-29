@@ -7,11 +7,11 @@
     }
 
     li {
-        @apply bg-gray-100 p-2 focus:ring-4 border-t border-gray-200 list-none;
+        @apply bg-gray-100 p-2 focus:ring-4 border-t border-gray-200 list-none dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100;
     }
 
     li.active {
-        @apply border-y border-l-4 border-gray-500 bg-gray-300/50
+        @apply border-y border-l-4 border-gray-500 bg-gray-300/50 dark:border-zinc-400 dark:bg-zinc-800
     }
 
 }

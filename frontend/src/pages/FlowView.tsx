@@ -27,8 +27,8 @@ import { RadioGroup } from "../components/RadioGroup";
 import {
   useGetFlowQuery,
   useGetServicesQuery,
-  useLazyToFullPythonRequestQuery,
-  useLazyToPwnToolsQuery,
+  useToFullPythonRequestQuery,
+  useToPwnToolsQuery,
   useToSinglePythonRequestQuery,
   useGetFlagRegexQuery,
 } from "../api";
@@ -38,8 +38,8 @@ import escapeStringRegexp from "escape-string-regexp";
 const SECONDARY_NAVBAR_HEIGHT = 50;
 
 function CopyButton({ copyText }: { copyText?: string }) {
-  const { statusText, copy, copyState } = useCopy({
-    getText: async () => copyText ?? "",
+  const { statusText, copy } = useCopy({
+    getText: () => copyText ?? "",
   });
   return (
     <>
@@ -492,20 +492,20 @@ export function FlowView() {
 
   const { data: flow, isError, isLoading } = useGetFlowQuery(id!, { skip: id === undefined });
 
-  const [triggerPwnToolsQuery] = useLazyToPwnToolsQuery();
-  const [triggerFullPythonRequestQuery] = useLazyToFullPythonRequestQuery();
-
-  async function copyAsPwn() {
-    if (flow?.id) {
-      const { data } = await triggerPwnToolsQuery(flow?.id);
-      console.log(data);
-      return data || "";
-    }
-    return "";
-  }
+  const flowId = flow?.id ?? "";
+  const {
+    data: pwnPayload = "",
+    isFetching: isPwnPayloadFetching,
+    isError: isPwnPayloadError,
+  } = useToPwnToolsQuery(flowId, { skip: flowId === "" });
+  const {
+    data: requestsPayload = "",
+    isFetching: isRequestsPayloadFetching,
+    isError: isRequestsPayloadError,
+  } = useToFullPythonRequestQuery(flowId, { skip: flowId === "" });
 
   const { statusText: pwnCopyStatusText, copy: copyPwn } = useCopy({
-    getText: copyAsPwn,
+    getText: () => pwnPayload,
     copyStateToText: {
       copied: "Copied",
       default: "Copy as pwntools",
@@ -514,16 +514,8 @@ export function FlowView() {
     },
   });
 
-  async function copyAsRequests() {
-    if (flow?.id) {
-      const { data } = await triggerFullPythonRequestQuery(flow?.id);
-      return data || "";
-    }
-    return "";
-  }
-
   const { statusText: requestsCopyStatusText, copy: copyRequests } = useCopy({
-    getText: copyAsRequests,
+    getText: () => requestsPayload,
     copyStateToText: {
       copied: "Copied",
       default: "Copy as requests",
@@ -531,6 +523,18 @@ export function FlowView() {
       copying: "Generating payload",
     },
   });
+  const pwnButtonDisabled = isPwnPayloadFetching || isPwnPayloadError || !pwnPayload;
+  const requestsButtonDisabled = isRequestsPayloadFetching || isRequestsPayloadError || !requestsPayload;
+  const pwnButtonText = isPwnPayloadFetching
+    ? "Generating payload"
+    : isPwnPayloadError
+      ? "Failed"
+      : pwnCopyStatusText;
+  const requestsButtonText = isRequestsPayloadFetching
+    ? "Generating payload"
+    : isRequestsPayloadError
+      ? "Failed"
+      : requestsCopyStatusText;
 
   // TODO: account for user scrolling - update currentFlow accordingly
   const [currentFlow, setCurrentFlow] = useState<number>(-1);
@@ -668,17 +672,19 @@ export function FlowView() {
             <LightningBoltIcon className="h-5 w-5"></LightningBoltIcon>
           </button> : undefined}
           <button
-            className="bg-gray-700 text-white px-2 text-sm rounded-md"
+            className="bg-gray-700 text-white px-2 text-sm rounded-md disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-100"
             onClick={copyPwn}
+            disabled={pwnButtonDisabled}
           >
-            {pwnCopyStatusText}
+            {pwnButtonText}
           </button>
 
           <button
-            className="bg-gray-700 text-white px-2 text-sm rounded-md"
+            className="bg-gray-700 text-white px-2 text-sm rounded-md disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-100"
             onClick={copyRequests}
+            disabled={requestsButtonDisabled}
           >
-            {requestsCopyStatusText}
+            {requestsButtonText}
           </button>
         </div>
       </div>

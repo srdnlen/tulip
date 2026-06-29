@@ -70,7 +70,7 @@ const deriveDisplayMode = (
 };
 
 export function DiffView() {
-  const prefersDarkMode = usePrefersDarkMode();
+  const [prefersDarkMode] = usePrefersDarkMode();
   let [searchParams] = useSearchParams();
   const firstFlowParam = searchParams.get(FIRST_DIFF_KEY);
   const firstFlowId = firstFlowParam?.split(":")[0];

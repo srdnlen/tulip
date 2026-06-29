@@ -24,6 +24,8 @@ import {
   useGetServicesQuery,
 } from "../api";
 import { getTickStuff } from "../tick";
+import {usePrefersDarkMode} from "../hooks/usePrefersDarkMode";
+import { SunIcon, MoonIcon } from "@heroicons/react/solid";
 
 function ServiceSelection() {
   const FILTER_KEY = SERVICE_FILTER_KEY;
@@ -62,6 +64,26 @@ function ServiceSelection() {
         </option>
       ))}
     </select>
+  );
+}
+
+function DarkModeSwitch() {
+  const [prefersDarkMode, setPrefersDarkMode] = usePrefersDarkMode();
+
+  return (
+    <button
+      onClick={() => setPrefersDarkMode(prev => !prev)}
+        className={`w-9 flex justify-center px-0 bg-gray-200 py-1 rounded-md border border-transparent placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap ${
+          prefersDarkMode ? "bg-amber-300/20 text-zinc-100 border-zinc-600" : "bg-gray-200 text-gray-900"
+        }`}
+      aria-label="Toggle dark mode"
+    >
+      {prefersDarkMode ? (
+        <SunIcon className="w-6 h-6 text-yellow-400" />
+      ) : (
+        <MoonIcon className="w-6 h-6 text-gray-800" />
+      )}
+    </button>
   );
 }
 
@@ -160,7 +182,7 @@ function FirstDiff() {
   return (
     <input
       type="text"
-      className="md:w-72"
+      className="md:w-56"
       placeholder="First Diff ID"
       readOnly
       value={firstFlow}
@@ -203,8 +225,8 @@ function SecondDiff() {
   return (
     <input
       type="text"
-      className="md:w-72"
-      placeholder="Second Flow ID"
+      className="md:w-56"
+      placeholder="Second Diff ID"
       readOnly
       value={secondFlow}
       onClick={(event) => setSecondDiffFlow()}
@@ -292,20 +314,20 @@ export function Header() {
           Graph view
         </div>
       </Link>
-      <div className="ml-auto mr-4" style={{ display: "flex" }}>
-        <div className="mr-4">
+      <div className="flex-1" style={{ display: "flex" }}>
+        <div className="mr-3">
           <FirstDiff />
         </div>
         <div className="mr-4">
           <SecondDiff />
         </div>
-        <div className="mr-6">
+        <div className="mr-4">
           <Suspense>
             <Diff />
           </Suspense>
         </div>
         <div
-          className="ml-auto"
+          className="mr-4 ml-auto"
           style={{
             display: "flex",
             justifyContent: "center",
@@ -314,6 +336,9 @@ export function Header() {
           }}
         >
           Current: {currentTick}
+        </div>
+        <div className="mr-4">
+            <DarkModeSwitch />
         </div>
       </div>
     </>

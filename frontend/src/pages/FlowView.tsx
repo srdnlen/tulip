@@ -647,7 +647,7 @@ export function FlowView() {
           <select
             id="repr-select"
             value={reprId}
-            className="border-2 border-gray-700 text-black px-2 text-sm rounded-md dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+            className="border-2 bg-transparent border-gray-700 text-black px-2 text-sm rounded-md dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
             onChange={(e) => {
               const target = e.target as HTMLSelectElement;
               const newreprid = parseInt(target.value);

@@ -22,7 +22,6 @@ import { toggleFilterTag, toggleTagIntersectMode } from "../store/filter";
 import { HeartIcon, FilterIcon, LinkIcon } from "@heroicons/react/solid";
 import { HeartIcon as EmptyHeartIcon } from "@heroicons/react/outline";
 
-import classes from "./FlowList.module.css";
 import { format } from "date-fns";
 import useDebounce from "../hooks/useDebounce";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
@@ -262,7 +261,7 @@ export function FlowList() {
       <Virtuoso
         className={classNames({
           "flex-1": true,
-          [classes.list_container]: true,
+          "list_container": true,
           "sidebar-loading": isLoading,
         })}
         data={transformedFlowData}
@@ -313,7 +312,7 @@ function FlowListEntry({ flow, isActive, onHeartClick }: FlowListEntryProps) {
   return (
     <li
       className={classNames({
-        [classes.active]: isActive,
+        "active": isActive,
       })}
     >
       <div className="flex">

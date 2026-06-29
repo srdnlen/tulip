@@ -61,7 +61,7 @@ export const Corrie = () => {
   const filterFlags = useAppSelector((state) => state.filter.filterFlags);
   const filterFlagids = useAppSelector((state) => state.filter.filterFlagids);
   const tagIntersectionMode = useAppSelector((state) => state.filter.tagIntersectionMode);
-  const prefersDarkMode = usePrefersDarkMode();
+  const [prefersDarkMode] = usePrefersDarkMode();
 
   const [searchParams, setSearchParams] = useSearchParams();
 

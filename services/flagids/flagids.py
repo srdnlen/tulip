@@ -15,18 +15,22 @@ team_id_is_digit = team_id.isdigit()
 team_id_int = int(team_id) if team_id_is_digit else None
 flagid_endpoint = os.getenv("FLAGID_ENDPOINT", "http://localhost:8000/flagids.json")
 flagid_scrape_enabled = os.getenv("FLAGID_SCRAPE", "") != ""
+flagid_parser = os.getenv("FLAGID_PARSER", "ccit")
 
 
 # DICT FORMAT: { "tulipservicename": ["flagstore1", "flagstore2"] }
 FLAGSTORES_MAPPINGS = {
-    "Pwnzerotti": ["Pwnzer0tt1Shop-Article", "Pwnzer0tt1Shop-User"],
+    "Pwnzer0tt1Shop": ["Pwnzer0tt1Shop-Article", "Pwnzer0tt1Shop-User"],
+    "insecure-credential-vault": ["insecure-credential-vault"],
 }
 
 #### Build lookup tables
 SERVICE_PORTS_LUT = {}
+SERVICE_PORTS_LUT_BACKWARDS = {}
 # Lookup port in Tulip config
 for item in configurations.services:
     SERVICE_PORTS_LUT[item['name']] = item['port']
+    SERVICE_PORTS_LUT_BACKWARDS[item['port']] = item['name']
 
 FLAGSTORES_PORTS_LUT = {}
 for service_name, flagstores in FLAGSTORES_MAPPINGS.items():
@@ -51,7 +55,8 @@ if flagid_scrape_enabled:
 else:
     print("FLAGID SCRAPE DISABLED", flush=True)
 
-def extract_team_flag_ids(data: dict):
+
+def CCIT_flag_ids_extractor(data: dict):
     # Traverse all the flagstores
     for flagstore in data:
         port = FLAGSTORES_PORTS_LUT.get(flagstore, None)
@@ -69,8 +74,15 @@ def extract_team_flag_ids(data: dict):
                 for flagid in elem:
                     yield str(flagid), flagstore, port
             else:
-                yield str(elem), port
+                yield str(elem), flagstore, port
 
+# Dict format: { FLAGID_PARSER value: parser function }
+FLAGID_PARSERS_MAP = {
+    "ccit": CCIT_flag_ids_extractor,
+}
+
+def extract_team_flag_ids(data: dict):
+    return FLAGID_PARSERS_MAP[flagid_parser](data)
 
 def update_flagids():
     assert db is not None
@@ -78,6 +90,15 @@ def update_flagids():
     # Fetch data
     response = requests.get(flagid_endpoint)
     rows = list(extract_team_flag_ids(response.json()))
+    # use generic labels for services with a single flagstore, and add flagstore- prefix to allow for correct
+    # formatting on the frontend
+    for i, (flagid, flagstore, port) in enumerate(rows):
+        rows[i][1] = "flagstore-" + rows[i][1]
+        if port is None:
+            continue
+        service_name = SERVICE_PORTS_LUT_BACKWARDS[port]
+        if len(FLAGSTORES_MAPPINGS[service_name]) == 1:
+            rows[i] = (flagid, "flag-id", port)
     print("Updating flagids: ", time.time(), f"({len(rows)})", flush=True)
 
     # Insert into the database

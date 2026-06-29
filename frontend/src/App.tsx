@@ -50,7 +50,7 @@ function App() {
 
 function Layout() {
   return (
-    <div className="grid-container">
+    <div className="grid-container bg-white text-gray-900 dark:bg-zinc-900 dark:text-zinc-100">
       <header className="header-area">
         <div className="header">
           <Header></Header>
@@ -72,7 +72,7 @@ function Layout() {
 
 function PageNotFound() {
   return (
-    <div>
+    <div className="p-4">
       <h2>404 Page not found</h2>
     </div>
   );

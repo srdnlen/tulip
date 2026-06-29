@@ -235,7 +235,7 @@ function Diff() {
 
   return (
     <button
-      className=" bg-amber-100 text-gray-800 rounded-md px-2 py-1"
+      className="whitespace-nowrap bg-amber-100 text-gray-800 rounded-md px-2 py-1 dark:bg-amber-500/20 dark:text-amber-100 dark:ring-1 dark:ring-amber-300/20"
       onClick={() => {
         navigateToDiff()
       }}
@@ -281,14 +281,14 @@ export function Header() {
       </div>
       <div>
         <button
-          className=" bg-amber-100 text-gray-800 rounded-md px-2 py-1"
+          className="whitespace-nowrap bg-amber-100 text-gray-800 rounded-md px-2 py-1 dark:bg-amber-500/20 dark:text-amber-100 dark:ring-1 dark:ring-amber-300/20"
           onClick={() => setToLastnTicks(5)}
         >
           Last 5 ticks
         </button>
       </div>
       <Link to={`/corrie?${searchParams}`}>
-        <div className="bg-blue-100 text-gray-800 rounded-md px-2 py-1">
+        <div className="whitespace-nowrap bg-blue-100 text-gray-800 rounded-md px-2 py-1 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-1 dark:ring-blue-300/10">
           Graph view
         </div>
       </Link>

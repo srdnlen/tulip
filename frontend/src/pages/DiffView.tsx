@@ -6,13 +6,14 @@ import { FullFlow } from "../types";
 
 import ReactDiffViewer from "react-diff-viewer";
 import { RadioGroup } from "../components/RadioGroup";
+import { usePrefersDarkMode } from "../hooks/usePrefersDarkMode";
 
 import { hexy } from "hexy";
 
 import { FIRST_DIFF_KEY, SECOND_DIFF_KEY } from "../const";
 import { useGetFlowQuery } from "../api";
 
-function Flow(flow1: string, flow2: string) {
+function Flow(flow1: string, flow2: string, useDarkTheme: boolean) {
   return (
     <div>
       <ReactDiffViewer
@@ -20,7 +21,7 @@ function Flow(flow1: string, flow2: string) {
         newValue={flow2}
         splitView={true}
         showDiffOnly={false}
-        useDarkTheme={false}
+        useDarkTheme={useDarkTheme}
         hideLineNumbers={true}
         styles={{
           line: {
@@ -69,6 +70,7 @@ const deriveDisplayMode = (
 };
 
 export function DiffView() {
+  const prefersDarkMode = usePrefersDarkMode();
   let [searchParams] = useSearchParams();
   const firstFlowParam = searchParams.get(FIRST_DIFF_KEY);
   const firstFlowId = firstFlowParam?.split(":")[0];
@@ -104,12 +106,12 @@ export function DiffView() {
 
   return (
     <div>
-      <div className="sticky shadow-md bg-white overflow-auto py-1 border-y flex items-center">
+      <div className="sticky shadow-md bg-white overflow-auto py-1 border-y flex items-center dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-black/30">
         <RadioGroup
           options={displayOptions}
           value={displayOption}
           onChange={setDisplayOption}
-          className="flex gap-2 text-gray-800 text-sm mr-4"
+          className="flex gap-2 text-gray-800 text-sm mr-4 dark:text-zinc-100"
         />
       </div>
 
@@ -120,7 +122,7 @@ export function DiffView() {
             {
               length: Math.min(firstFlow!.flow[firstFlowRepr].flow.length, secondFlow!.flow[secondFlowRepr].flow.length),
             },
-            (_, i) => Flow(firstFlow!.flow[firstFlowRepr].flow[i].data, secondFlow!.flow[secondFlowRepr].flow[i].data)
+            (_, i) => Flow(firstFlow!.flow[firstFlowRepr].flow[i].data, secondFlow!.flow[secondFlowRepr].flow[i].data, prefersDarkMode)
           )}
         </div>
       )}
@@ -135,7 +137,8 @@ export function DiffView() {
             (_, i) =>
               Flow(
                 hexy(Buffer.from(firstFlow!.flow[firstFlowRepr].flow[i].b64, 'base64'), { format: "twos" }),
-                hexy(Buffer.from(secondFlow!.flow[secondFlowRepr].flow[i].b64, 'base64'), { format: "twos" })
+                hexy(Buffer.from(secondFlow!.flow[secondFlowRepr].flow[i].b64, 'base64'), { format: "twos" }),
+                prefersDarkMode
               )
           )}
         </div>

@@ -43,35 +43,38 @@ export const Tag = ({ tag, color, disabled = false, excluded = false, onClick }:
   var text = tag.replace("flagstore-", "");
 
   var isFlagstoreTag = tag.startsWith("flagstore-")
-  isFlagstoreTag = isFlagstoreTag && (!disabled && !excluded)
+  let styleAsFlagstoreTag = isFlagstoreTag && !disabled && !excluded
 
   // if tag is flagstore-related, leave styling to the classes below
-  if (isFlagstoreTag && !disabled && !excluded) {
+  if (styleAsFlagstoreTag) {
     tagBackgroundColor = ""
     tagTextColor = ""
   }  else {
-    tagBackgroundColor = disabled ? "#eee" : color ?? tagToColor(tag);
+    tagBackgroundColor = disabled ? "" : color ?? tagToColor(tag);
     tagTextColor = disabled
-      ? "#bbb"
+      ? ""
       : tagForegroundColorMap[tag]
         ?? (Color(tagBackgroundColor).isDark()
           ? "#fff"
           : "#000")
   }
 
-  if (excluded) {
-    tagTextColor = "white";
-    tagBackgroundColor = "black";
-  }
-
   return (
     <div
       onClick={onClick}
       className={classNames("border-[1.5px] p-2.5 cursor-pointer rounded-md uppercase text-xs h-5 text-center flex items-center hover:opacity-90 transition-colors duration-250 text-ellipsis overflow-hidden whitespace-nowrap", {
+        "border-transparent": disabled || excluded,
         "bg-gray-300": disabled,
-        "border-gray-400": isFlagstoreTag,
-        "text-gray-800 dark:text-gray-300": isFlagstoreTag,
-        "bg-transparent": isFlagstoreTag,
+        "dark:bg-gray-700": disabled,
+
+        "bg-neutral-900": excluded,
+        "text-white": excluded,
+        "dark:bg-red-900/50": excluded,
+
+
+        "border-gray-400": styleAsFlagstoreTag,
+        "text-gray-800 dark:text-gray-300": styleAsFlagstoreTag,
+        "bg-transparent": styleAsFlagstoreTag,
       })}
       style={{
         backgroundColor: tagBackgroundColor,

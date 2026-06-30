@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # This file is part of Flower.
@@ -22,46 +22,70 @@
 # You should have received a copy of the GNU General Public License
 # along with Flower.  If not, see <https://www.gnu.org/licenses/>.
 
-import base64
-
 from database import FlowDetail
 
 
-def escape(i):
-    if isinstance(i, str):
-        i = ord(i)
-    ret = chr(i) if 0x20 <= i and i < 0x7F else f"\\x{i:02x}"
-    if ret in '\\"':
-        ret = "\\" + ret
-    return ret
+MARKER_SIZE = 32
 
 
-def convert(message):
-    return "".join([escape(i) for i in message])
-
-
-# convert a flow into pwn script
-def flow2pwn(flow: FlowDetail):
-    script = """import json
+HEADER_TEMPLATE = """#!/usr/bin/env python3
+import os
 import sys
 
 from pwn import *
 
-HOST = os.getenv('TARGET_IP')
-EXTRA = json.loads(os.getenv('TARGET_EXTRA', '[]'))
+PORT = {port}
+SSL = bool(int(os.getenv("TARGET_SSL", "0")))
+HOST = (
+    os.getenv("TARGET_IP")
+    or os.getenv("TARGET_HOST")
+    or (sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1")
+)
+TIMEOUT = float(os.getenv("PWN_TIMEOUT", "5"))
+context.log_level = os.getenv("PWN_LOG_LEVEL", "info")
 
-proc = remote(HOST, {})
-""".format(
-        flow.port_dst
+
+def connect():
+    return remote(HOST, PORT, ssl=SSL)
+
+
+def main():
+    io = connect()
+"""
+
+
+FOOTER_TEMPLATE = """
+    return io
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+
+# convert a flow into pwn script
+def flow2pwn(flow: FlowDetail):
+    script = HEADER_TEMPLATE.format(
+        port=flow.port_dst,
     )
 
     for item in flow.kind_items():
         if item.direction == "c":
-            script += """proc.write(b"{}")\n""".format(convert(item.data))
+            script += render_send(item.data)
 
         else:
-            script += """proc.recvuntil(b"{}")\n""".format(
-                convert(item.data[-10:]).replace("\n", "\\n")
-            )
+            script += render_recvuntil(item.data)
 
-    return script
+    return script + FOOTER_TEMPLATE
+
+
+def render_send(data: bytes) -> str:
+    return f"    io.send({data!r})\n"
+
+
+def render_recvuntil(data: bytes) -> str:
+    if not data:
+        return ""
+
+    marker = data[-MARKER_SIZE:]
+    return f"    io.recvuntil({marker!r}, timeout=TIMEOUT)\n"

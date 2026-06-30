@@ -22,41 +22,53 @@
 # You should have received a copy of the GNU General Public License
 # along with Flower.  If not, see <https://www.gnu.org/licenses/>.
 
-from http.server import BaseHTTPRequestHandler
-from urllib.parse import parse_qs
-from jinja2 import Environment, BaseLoader
-from io import BytesIO
 import json
+from http.cookies import SimpleCookie
+from http.server import BaseHTTPRequestHandler
+from io import BytesIO
+from urllib.parse import parse_qs, urlsplit
+
+from jinja2 import BaseLoader, Environment
 
 from database import FlowDetail
 
 DISCARD_COOKIES = ["PHPSESSID", "wordpress_logged_in_", "session"]
 
 
-HEADER_TEMPLATE = """import json
+HEADER_TEMPLATE = """#!/usr/bin/env python3
 import os
 import sys
 
 import requests
 
-HOST = os.getenv('TARGET_IP')
-EXTRA = json.loads(os.getenv('TARGET_EXTRA', '[]'))
+PORT = {{port}}
+SCHEME = "https" if os.getenv("TARGET_HTTPS", "0") == "1" else "http"
+HOST = (
+    os.getenv("TARGET_IP")
+    or os.getenv("TARGET_HOST")
+    or (sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1")
+)
+BASE_URL = f"{SCHEME}://{HOST}:{PORT}"
+TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "5"))
 {% if use_requests_session %}
 s = requests.Session()
 {% endif -%}
 """
 
 REQUEST_TEMPLATE = """
-{{"s." if use_requests_session}}headers = {{headers}}
-{% if data -%}
-data = {{data}}
-{% endif -%}
-{{"res = " if print_info}}{{"s" if use_requests_session else "requests"}}.{{request_method}}(f"http://{HOST}:{{port}}" + {{request_path_repr}}{% if data %}, {{data_param_name}}=data{% endif %}{{ ", headers=headers" if not use_requests_session}})
-{% if print_info -%}
-print(res.text)
-print(res.status_code, res.headers)
-{% endif %}
+# {{request_method|upper}} {{request_path_comment}}
+headers_{{request_index}} = {{headers}}
+{% if data is not none %}{{payload_name}} = {{data}}
+{% endif %}r{{request_index}} = {{"s" if use_requests_session else "requests"}}.{{request_method}}(
+    BASE_URL + {{request_path_repr}},
+    headers=headers_{{request_index}},
+{% if data is not none %}    {{data_param_name}}={{payload_name}},
+{% endif %}    timeout=TIMEOUT,
+)
+print(r{{request_index}}.text)
 """
+
+FOOTER_TEMPLATE = ""
 
 
 def render(template, **kwargs):
@@ -77,11 +89,8 @@ class HTTPRequest(BaseHTTPRequestHandler):
         except AttributeError:
             self.headers = {}
 
-        # Data
-        try:
-            self.body = raw_http_request.split(b"\r\n\r\n", 1)[1].rstrip()
-        except IndexError:
-            self.body = None
+        _, separator, body = raw_http_request.partition(b"\r\n\r\n")
+        self.body = body if separator else b""
 
     def send_error(self, code, message=None, explain=None):
         self.error_code = code
@@ -95,20 +104,26 @@ def decode_http_request(raw_request: bytes, tokenize):
         "content-length",
         "accept-encoding",
         "connection",
-        "accept",
         "host",
+        "user-agent",
     ]
     content_type = ""
     data = None
     data_param_name = None
 
-    for i in request.headers:
-        normalized_header = i.lower()
+    for header_name in request.headers:
+        normalized_header = header_name.lower()
 
         if normalized_header == "content-type":
-            content_type = request.headers[i]
-        if not normalized_header in blocked_headers:
-            headers[i] = request.headers[i]
+            content_type = request.headers[header_name].lower()
+        if normalized_header in blocked_headers:
+            continue
+        if normalized_header == "cookie":
+            cookie = filter_cookie_header(request.headers[header_name])
+            if cookie:
+                headers[header_name] = cookie
+            continue
+        headers[header_name] = request.headers[header_name]
 
     # if tokenization is enabled and body is not empty, try to decode form body or JSON body
     if tokenize and request.body:
@@ -116,7 +131,10 @@ def decode_http_request(raw_request: bytes, tokenize):
         if content_type.startswith("application/x-www-form-urlencoded"):
             data_param_name = "data"
             data = {}
-            body_dict = parse_qs(request.body.decode())
+            body_dict = parse_qs(
+                request.body.decode(),
+                keep_blank_values=True,
+            )
             for key, value in body_dict.items():
                 if len(value) == 1:
                     data[key] = value[0]
@@ -142,7 +160,45 @@ def decode_http_request(raw_request: bytes, tokenize):
             data_param_name = "data"
             data = request.body
 
+    elif request.body:
+        data_param_name = "data"
+        data = request.body
+
     return request, data, data_param_name, headers
+
+
+def filter_cookie_header(cookie_header: str) -> str:
+    cookie = SimpleCookie()
+
+    try:
+        cookie.load(cookie_header)
+    except Exception:
+        return cookie_header
+
+    kept_cookies = []
+    for morsel in cookie.values():
+        if should_discard_cookie(morsel.key):
+            continue
+        kept_cookies.append(f"{morsel.key}={morsel.value}")
+
+    return "; ".join(kept_cookies)
+
+
+def should_discard_cookie(cookie_name: str) -> bool:
+    return any(cookie_name.startswith(prefix) for prefix in DISCARD_COOKIES)
+
+
+def normalize_request_path(path: str) -> str:
+    parsed = urlsplit(path)
+    if parsed.scheme and parsed.netloc:
+        path = parsed.path or "/"
+        if parsed.query:
+            path = f"{path}?{parsed.query}"
+
+    if not path.startswith("/"):
+        raise Exception("request path must start with / to be a valid HTTP request")
+
+    return path
 
 
 # tokenize used for automatically fill data param of request
@@ -158,9 +214,8 @@ def convert_single_http_requests(
     request, data, data_param_name, headers = decode_http_request(
         flow.items[item_index].data, tokenize
     )
-    if not request.path.startswith("/"):
-        raise Exception("request path must start with / to be a valid HTTP request")
-    request_path_repr = repr(request.path)
+    request_path = normalize_request_path(request.path)
+    request_path_repr = repr(request_path)
     request_method = validate_request_method(request.command)
 
     return render(
@@ -169,15 +224,16 @@ def convert_single_http_requests(
         port=flow.port_dst,
     ) + render(
         REQUEST_TEMPLATE,
+        request_index=1,
         headers=repr(headers),
-        data=data,
+        data=repr(data) if data is not None else None,
+        payload_name=build_payload_name(data_param_name, 1),
         request_method=request_method,
+        request_path_comment=repr(request_path),
         request_path_repr=request_path_repr,
         data_param_name=data_param_name,
         use_requests_session=use_requests_session,
-        port=flow.port_dst,
-        print_info=True,
-    )
+    ) + render(FOOTER_TEMPLATE)
 
 
 def convert_flow_to_http_requests(
@@ -190,30 +246,36 @@ def convert_flow_to_http_requests(
         port=port,
     )
 
+    request_index = 1
     for item in flow.kind_items():
         if item.direction == "c":
             request, data, data_param_name, headers = decode_http_request(
                 item.data, tokenize
             )
             request_method = validate_request_method(request.command)
-            if not request.path.startswith("/"):
-                raise Exception(
-                    "request path must start with / to be a valid HTTP request"
-                )
-            request_path_repr = repr(request.path)
+            request_path = normalize_request_path(request.path)
+            request_path_repr = repr(request_path)
 
             script += render(
                 REQUEST_TEMPLATE,
+                request_index=request_index,
                 headers=repr(headers),
-                data=data,
+                data=repr(data) if data is not None else None,
+                payload_name=build_payload_name(data_param_name, request_index),
                 request_method=request_method,
+                request_path_comment=repr(request_path),
                 request_path_repr=request_path_repr,
                 data_param_name=data_param_name,
                 use_requests_session=use_requests_session,
-                port=port,
-                print_info=True,
             )
-    return script
+            request_index += 1
+    return script + render(FOOTER_TEMPLATE)
+
+
+def build_payload_name(data_param_name: str | None, request_index: int) -> str:
+    if data_param_name == "json":
+        return f"json_data_{request_index}"
+    return f"data_{request_index}"
 
 
 def validate_request_method(request_method: str):

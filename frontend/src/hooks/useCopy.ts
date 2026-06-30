@@ -36,7 +36,7 @@ const defaultCopyStateToText: Record<CopyState, string> = {
 
 interface useCopyParams {
     copyStateToText?: Record<CopyState, string>;
-    getText: () => Promise<string>;
+    getText: () => string | Promise<string>;
 }
 
 export function useCopy(params: useCopyParams) {
@@ -44,16 +44,34 @@ export function useCopy(params: useCopyParams) {
 
     const copyStateToText = params.copyStateToText ?? defaultCopyStateToText;
 
-    const copy = useCallback(async () => {
-        setCopyState("copying");
-        const textToCopy = await params.getText();
-        copyToClipboard(textToCopy)
+    const copyText = useCallback((textToCopy: string) => {
+        return copyToClipboard(textToCopy)
             .then(() => {
                 setCopyState("copied");
                 setTimeout(() => setCopyState("default"), 2000);
             })
             .catch(() => setCopyState("failed"));
-    }, [params.getText, setCopyState]);
+    }, [setCopyState]);
+
+    const copy = useCallback(() => {
+        setCopyState("copying");
+        let textOrPromise: string | Promise<string>;
+        try {
+            textOrPromise = params.getText();
+        } catch {
+            setCopyState("failed");
+            return;
+        }
+
+        if (typeof textOrPromise === "string") {
+            copyText(textOrPromise);
+            return;
+        }
+
+        textOrPromise
+            .then(copyText)
+            .catch(() => setCopyState("failed"));
+    }, [copyText, params.getText, setCopyState]);
 
     return {
         copyState,

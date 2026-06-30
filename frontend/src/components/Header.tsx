@@ -47,6 +47,7 @@ function ServiceSelection() {
   let [searchParams, setSearchParams] = useSearchParams();
   return (
     <select
+      className={"w-48"}
       value={searchParams.get(FILTER_KEY) ?? ""}
       onChange={(event) => {
         let serviceFilter = event.target.value;

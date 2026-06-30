@@ -4,8 +4,9 @@ import time
 from datetime import datetime
 
 import psycopg_pool
-import requests
 import configurations
+
+from protocols.ccit import CCITFlagIdProtocol
 
 DELAY = 5  # DELAY from start of tick
 tick_length = int(os.getenv("TICK_LENGTH", 10 * 1000)) // 1000
@@ -16,27 +17,6 @@ team_id_int = int(team_id) if team_id_is_digit else None
 flagid_endpoint = os.getenv("FLAGID_ENDPOINT", "http://localhost:8000/flagids.json")
 flagid_scrape_enabled = os.getenv("FLAGID_SCRAPE", "") != ""
 flagid_parser = os.getenv("FLAGID_PARSER", "ccit")
-
-
-# DICT FORMAT: { "tulipservicename": ["flagstore1", "flagstore2"] }
-FLAGSTORES_MAPPINGS = {
-    "Pwnzer0tt1Shop": ["Pwnzer0tt1Shop-Article", "Pwnzer0tt1Shop-User"],
-    "insecure-credential-vault": ["insecure-credential-vault"],
-}
-
-#### Build lookup tables
-SERVICE_PORTS_LUT = {}
-SERVICE_PORTS_LUT_BACKWARDS = {}
-# Lookup port in Tulip config
-for item in configurations.services:
-    SERVICE_PORTS_LUT[item['name']] = item['port']
-    SERVICE_PORTS_LUT_BACKWARDS[item['port']] = item['name']
-
-FLAGSTORES_PORTS_LUT = {}
-for service_name, flagstores in FLAGSTORES_MAPPINGS.items():
-    for store_name in flagstores:
-        FLAGSTORES_PORTS_LUT[store_name] = SERVICE_PORTS_LUT.get(service_name, None)
-####
 
 
 client = None
@@ -56,49 +36,36 @@ else:
     print("FLAGID SCRAPE DISABLED", flush=True)
 
 
-def CCIT_flag_ids_extractor(data: dict):
-    # Traverse all the flagstores
-    for flagstore in data:
-        port = FLAGSTORES_PORTS_LUT.get(flagstore, None)
-
-        # Traverse ticks of flagstore
-        flagIdsForServiceOfOwnTeam = data[flagstore][team_id]
-        for tick in flagIdsForServiceOfOwnTeam:
-            # Get all flagid values
-            elem = flagIdsForServiceOfOwnTeam[tick]
-
-            if type(elem) is dict:
-                for key in elem:
-                    yield str(elem[key]), flagstore, port
-            elif type(elem) in (list, tuple):
-                for flagid in elem:
-                    yield str(flagid), flagstore, port
-            else:
-                yield str(elem), flagstore, port
-
-# Dict format: { FLAGID_PARSER value: parser function }
 FLAGID_PARSERS_MAP = {
-    "ccit": CCIT_flag_ids_extractor,
+    "ccit": CCITFlagIdProtocol,
 }
 
-def extract_team_flag_ids(data: dict):
-    return FLAGID_PARSERS_MAP[flagid_parser](data)
+proto = FLAGID_PARSERS_MAP[flagid_parser](flagid_endpoint)
+
+#### Build port lookup tables with ports from the Tulip config
+SERVICE_PORTS_LUT = {}
+for item in configurations.services:
+    SERVICE_PORTS_LUT[item["name"]] = item["port"]
+
 
 def update_flagids():
     assert db is not None
 
     # Fetch data
-    response = requests.get(flagid_endpoint)
-    rows = list(extract_team_flag_ids(response.json()))
-    # use generic labels for services with a single flagstore, and add flagstore- prefix to allow for correct
-    # formatting on the frontend
-    for i, (flagid, flagstore, port) in enumerate(rows):
-        rows[i] = (flagid, "flagstore-" + rows[i][1], port) # ugly asf lol but its ok
-        if port is None:
-            continue
-        service_name = SERVICE_PORTS_LUT_BACKWARDS[port]
-        if len(FLAGSTORES_MAPPINGS[service_name]) == 1:
-            rows[i] = (flagid, "flag-id", port)
+    flagids = proto.get_flagids(team_id)
+    flagstores_mappings = proto.get_service_flagstores_mappings()
+
+    rows = [
+        (
+            fid.content,
+            f"flagstore-{fid.flagstore}"
+            if len(flagstores_mappings[fid.service]) > 1
+            else "flagstore-flag-id",
+            SERVICE_PORTS_LUT[fid.service],
+        )
+        for fid in flagids
+    ]
+
     print("Updating flagids: ", time.time(), f"({len(rows)})", flush=True)
 
     # Insert into the database
@@ -113,18 +80,18 @@ def main():
     unixtime = start_datetime.timestamp()
 
     while True:
-        try:
-            if flagid_scrape_enabled:
-                update_flagids()
+        # try:
+        if flagid_scrape_enabled:
+            update_flagids()
 
-            crnt_time = time.time()
-            time_diff = max(0, crnt_time - unixtime)
-            wait = tick_length - (time_diff % tick_length) + DELAY
-            time.sleep(wait)
+        crnt_time = time.time()
+        time_diff = max(0, crnt_time - unixtime)
+        wait = tick_length - (time_diff % tick_length) + DELAY
+        time.sleep(wait)
 
-        except Exception as e:
-            print("ERROR: ", e, flush=True)
-            time.sleep(10)
+        # except Exception as e:
+        #     print("ERROR: ", e, flush=True)
+        #     time.sleep(10)
 
 
 if __name__ == "__main__":

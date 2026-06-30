@@ -336,7 +336,7 @@ function FlowListEntry({ flow, isActive, onHeartClick }: FlowListEntryProps) {
           ) : undefined}
         </div>
         <div className="min-w-0 flex-1 shrink">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2 pb-1">
             <div className="min-w-0 flex-1 truncate">
               <span className="text-gray-700 font-bold overflow-ellipsis overflow-hidden dark:text-zinc-100">
                 {flow.service_tag}
@@ -350,7 +350,7 @@ function FlowListEntry({ flow, isActive, onHeartClick }: FlowListEntryProps) {
             </div>
             <div className="shrink-0 text-gray-500 ml-auto dark:text-zinc-400">{duration}</div>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap pb-1">
             {filtered_tag_list.map((tag) => (
               <Tag key={tag} tag={tag}></Tag>
             ))}

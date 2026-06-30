@@ -93,7 +93,7 @@ def update_flagids():
     # use generic labels for services with a single flagstore, and add flagstore- prefix to allow for correct
     # formatting on the frontend
     for i, (flagid, flagstore, port) in enumerate(rows):
-        rows[i][1] = "flagstore-" + rows[i][1]
+        rows[i] = (flagid, "flagstore-" + rows[i][1], port) # ugly asf lol but its ok
         if port is None:
             continue
         service_name = SERVICE_PORTS_LUT_BACKWARDS[port]

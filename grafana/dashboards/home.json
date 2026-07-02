@@ -112,7 +112,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  count(*) AS \"Total Flows\"\nFROM flow\nWHERE $__timeFilter(time)\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  count(*) AS \"Total Flows\"\nFROM flow\nWHERE $__timeFilter(time)\n  AND port_dst IN ($service)\nGROUP BY 1\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -243,7 +243,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  SUM(flags_in) AS \"Flags In\",\n  SUM(flags_out) AS \"Flags Out\"\nFROM flow\nWHERE $__timeFilter(time)\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  SUM(flags_in) AS \"Flags In\",\n  SUM(flags_out) AS \"Flags Out\"\nFROM flow\nWHERE $__timeFilter(time)\n  AND port_dst IN ($service)\nGROUP BY 1\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -309,7 +309,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT count(*) AS \"Suricata Alerts\" FROM flow WHERE $__timeFilter(time) AND jsonb_array_length(signatures) > 0 AND NOT (tags <@ '[\"http\",\"tcp\",\"flag-in\",\"flag-out\",\"suricata\"]'::jsonb)",
+          "rawSql": "SELECT count(*) AS \"Suricata Alerts\" FROM flow WHERE $__timeFilter(time) AND port_dst IN ($service) AND jsonb_array_length(signatures) > 0 AND NOT (tags <@ '[\"http\",\"tcp\",\"flag-in\",\"flag-out\",\"suricata\"]'::jsonb)",
           "refId": "A"
         }
       ],
@@ -374,7 +374,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT SUM(flags_in) AS \"Total\" FROM flow WHERE $__timeFilter(time)",
+          "rawSql": "SELECT SUM(flags_in) AS \"Total\" FROM flow WHERE $__timeFilter(time) AND port_dst IN ($service)",
           "refId": "A"
         }
       ],
@@ -439,7 +439,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT SUM(flags_out) AS \"Total\" FROM flow WHERE $__timeFilter(time)",
+          "rawSql": "SELECT SUM(flags_out) AS \"Total\" FROM flow WHERE $__timeFilter(time) AND port_dst IN ($service)",
           "refId": "A",
           "sql": {
             "columns": [
@@ -521,7 +521,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT SUM(packets_count) AS \"Total\" FROM flow WHERE $__timeFilter(time)",
+          "rawSql": "SELECT SUM(packets_count) AS \"Total\" FROM flow WHERE $__timeFilter(time) AND port_dst IN ($service)",
           "refId": "A"
         }
       ],
@@ -621,7 +621,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  port_dst::text AS metric,\n  count(*) AS value\nFROM flow\nWHERE $__timeFilter(time)\n  AND port_dst > 0\nGROUP BY 1, 2\nORDER BY 1",
+          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  port_dst::text AS metric,\n  count(*) AS value\nFROM flow\nWHERE $__timeFilter(time)\n  AND port_dst > 0\n  AND port_dst IN ($service)\nGROUP BY 1, 2\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -768,7 +768,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(f.time, $__interval),\n  t.name AS metric,\n  count(*) AS value\nFROM flow f\nJOIN tag t ON f.tags ? t.name\nWHERE $__timeFilter(f.time)\nGROUP BY 1, 2\nORDER BY 1, 2",
+          "rawSql": "SELECT\n  $__timeGroupAlias(f.time, $__interval),\n  t.name AS metric,\n  count(*) AS value\nFROM flow f\nJOIN tag t ON f.tags ? t.name\nWHERE $__timeFilter(f.time)\n  AND f.port_dst IN ($service)\nGROUP BY 1, 2\nORDER BY 1, 2",
           "refId": "A",
           "sql": {
             "columns": [
@@ -898,7 +898,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  AVG(EXTRACT(EPOCH FROM duration)) AS \"Avg Duration\",\n  MAX(EXTRACT(EPOCH FROM duration)) AS \"Max Duration\"\nFROM flow\nWHERE $__timeFilter(time)\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  AVG(EXTRACT(EPOCH FROM duration)) AS \"Avg Duration\",\n  MAX(EXTRACT(EPOCH FROM duration)) AS \"Max Duration\"\nFROM flow\nWHERE $__timeFilter(time)\n  AND port_dst IN ($service)\nGROUP BY 1\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -998,7 +998,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  SUM(packets_count) AS \"Packets\",\n  SUM(packets_size) AS \"Bytes\"\nFROM flow\nWHERE $__timeFilter(time)\nGROUP BY 1\nORDER BY 1",
+          "rawSql": "SELECT\n  $__timeGroupAlias(time, $__interval),\n  SUM(packets_count) AS \"Packets\",\n  SUM(packets_size) AS \"Bytes\"\nFROM flow\nWHERE $__timeFilter(time)\n  AND port_dst IN ($service)\nGROUP BY 1\nORDER BY 1",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1144,6 +1144,31 @@
           "type": "postgres",
           "uid": "tulip-timescale"
         },
+        "definition": "SELECT DISTINCT port_dst FROM flow WHERE port_dst > 0 ORDER BY port_dst",
+        "description": "Filter flows by service (destination port)",
+        "includeAll": true,
+        "label": "Service",
+        "multi": true,
+        "name": "service",
+        "options": [],
+        "query": "SELECT DISTINCT port_dst FROM flow WHERE port_dst > 0 ORDER BY port_dst",
+        "refresh": 2,
+        "regex": "",
+        "regexApplyTo": "value",
+        "sort": 3,
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "postgres",
+          "uid": "tulip-timescale"
+        },
         "definition": "SELECT DISTINCT kind FROM flow_item ORDER BY kind",
         "description": "Filter by flow item data type",
         "includeAll": true,
@@ -1206,6 +1231,6 @@
   "timezone": "browser",
   "title": "Tulip - Flow Overview",
   "uid": "be3f9d1e-8a2c-4f5e-b7d1-3c8e9a1f4d6b",
-  "version": 11,
+  "version": 12,
   "weekStart": ""
 }

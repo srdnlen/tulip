@@ -429,7 +429,6 @@ function LatencyMetrics ({flow}: {flow: FullFlow}) {
       </ul>
     </div>
   )
-  return JSON.stringify(flow)
 }
 
 // Helper function to format the IP for display. If the IP contains ":",

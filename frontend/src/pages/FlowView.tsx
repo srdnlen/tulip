@@ -1,7 +1,7 @@
 import { useSearchParams, useParams, useNavigate } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { FlowData, FullFlow } from "../types";
+import {FlowData, FullFlow} from "../types";
 import { Buffer } from "buffer";
 import {
   TEXT_FILTER_KEY,
@@ -356,6 +356,82 @@ function Flow({ full_flow, flow, flow_item_index, delta_time, id }: FlowProps) {
   );
 }
 
+function LatencyMetrics ({flow}: {flow: FullFlow}) {
+  const stats = useMemo(() => {
+  const responseTimes = [];
+  let totalBytes = 0;
+
+  for (const section of flow.flow) {
+    if (section.type !== "raw") continue;
+
+    const messages = section.flow;
+
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+
+      totalBytes += new TextEncoder().encode(msg.data).length;
+
+      if (msg.from !== "s") continue;
+
+      const nextClient = messages.slice(i + 1).find(m => m.from === "c");
+
+      if (nextClient) {
+        responseTimes.push(nextClient.time - msg.time);
+      }
+    }
+  }
+
+  const totalTime = responseTimes.reduce((a, b) => a + b, 0);
+
+  const averageResponseTime =
+    responseTimes.length > 0 ? totalTime / responseTimes.length : 0;
+
+  const jitter =
+    responseTimes.length > 1
+      ? responseTimes
+          .slice(1)
+          .reduce(
+            (sum, current, i) => sum + Math.abs(current - responseTimes[i]),
+            0
+          ) / (responseTimes.length - 1)
+      : 0;
+
+  const throughput =
+    totalTime > 0
+      ? totalBytes / (totalTime / 1000) // byte/s
+      : 0;
+
+  const minResponseTime =
+    responseTimes.length > 0 ? Math.min(...responseTimes) : 0;
+
+  const maxResponseTime =
+    responseTimes.length > 0 ? Math.max(...responseTimes) : 0;
+
+  return {
+    averageResponseTime,
+    minResponseTime,
+    maxResponseTime,
+    jitter,
+    throughput,
+    totalBytes,
+    totalTime,
+    responseTimes,
+  };
+}, [flow.flow]);
+  return (
+    <div>
+      <ul>
+        <li>Avg: {stats.averageResponseTime} ms</li>
+        <li>Jitter: {stats.jitter} ms</li>
+        <li>Throughput: {stats.throughput} byte/ms</li>
+        <li>Total bytes: {stats.totalBytes} B</li>
+        <li>Total time: {stats.totalTime} ms</li>
+      </ul>
+    </div>
+  )
+  return JSON.stringify(flow)
+}
+
 // Helper function to format the IP for display. If the IP contains ":",
 // assume it is an ipv6 address and surround it in square brackets
 function formatIP(ip: string) {
@@ -475,6 +551,10 @@ function FlowOverview({ flow }: { flow: FullFlow }) {
               <span className="italic">({flow.duration} ms)</span>
             </div>
           </div>
+        </div>
+        <div className="font-extrabold">Latency metrics</div>
+        <div className={"pl-2"}>
+          <LatencyMetrics flow={flow} />
         </div>
       </div>
     </div>

@@ -23,10 +23,17 @@ services = [{"ip": vm_ip, "port": 18080, "name": "BIOMarkt"},
 ]
 ```
 
-You can also edit this during the CTF, just rebuild the `api` service:
+
+> After the grace period, be sure to set the correct mappings between flagstores and services in
+`services/flagids/flagids.py`.
+
+
+You can also edit this during the CTF, just rebuild the `api` service in the first case, or the `flagids` service in the second case:
 ```
 docker-compose up --build -d api
+docker-compose up --build -d flagids
 ```
+
 
 ## Usage
 

@@ -2,13 +2,14 @@ FROM python:3.10
 
 WORKDIR /app
 
-COPY ./ /app/
+COPY flagids/ /app/
 
-COPY ./requirements.txt /app/
+COPY flagids/requirements.txt /app/
 
 RUN pip install -r ./requirements.txt
 
-COPY ./flagids.py /app/
+COPY flagids/flagids.py /app/
+COPY api/configurations.py /app/
 
 STOPSIGNAL SIGINT
 

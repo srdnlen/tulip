@@ -1,7 +1,7 @@
-import { useSearchParams, Link, useParams, useNavigate } from "react-router-dom";
-import React, { ChangeEvent, useDeferredValue, useEffect, useState } from "react";
+import { useSearchParams, useParams, useNavigate } from "react-router-dom";
+import React, {useEffect, useMemo, useState} from "react";
 import { useHotkeys } from "react-hotkeys-hook";
-import { FlowData, FullFlow } from "../types";
+import {FlowData, FullFlow} from "../types";
 import { Buffer } from "buffer";
 import {
   TEXT_FILTER_KEY,
@@ -45,7 +45,7 @@ function CopyButton({ copyText }: { copyText?: string }) {
     <>
       {copyText && (
         <button
-          className="p-2 text-sm text-blue-500"
+          className="p-2 text-sm text-blue-500 dark:text-blue-300"
           onClick={copy}
           disabled={!copyText}
         >
@@ -68,7 +68,7 @@ function FlowContainer({
       <div className="ml-auto">
         <CopyButton copyText={copyText}></CopyButton>
       </div>
-      <pre className="p-5 overflow-auto">{children}</pre>
+      <pre className="p-5 overflow-auto text-gray-900 dark:text-zinc-100">{children}</pre>
     </div>
   );
 }
@@ -82,8 +82,8 @@ function highlightText(flowText: string, search_string: string, flag_string: str
     return flowText
   }
   try {
-    const searchClasses = "bg-orange-200 rounded-sm";
-    const flagClasses = "bg-red-200 rounded-sm";
+    const searchClasses = "bg-orange-200 rounded-sm dark:bg-orange-500/30 dark:text-orange-100";
+    const flagClasses = "bg-red-200 rounded-sm dark:bg-red-500/30 dark:text-red-100";
 
     // Matches are stored as `[start index, end index]`.
     // For some reason tsc compiler (during build) thinks that `x.index` can be undefined (no, it can't).
@@ -173,7 +173,7 @@ function WebFlow({ flow }: { flow: FlowData }) {
   return (
     <FlowContainer>
       <pre>{header}</pre>
-      <div className="border border-gray-200 rounded-lg">
+      <div className="border border-gray-200 rounded-lg dark:border-zinc-700">
         <Hack
           srcDoc={http_content}
           sandbox=""
@@ -247,23 +247,23 @@ function Flow({ full_flow, flow, flow_item_index, delta_time, id }: FlowProps) {
   return (
     <div className="text-mono" id={id}>
       <div
-        className="sticky shadow-md bg-white overflow-auto py-1 border-y"
+        className="sticky shadow-md bg-white overflow-auto py-1 border-y dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-black/30"
         style={{ top: SECONDARY_NAVBAR_HEIGHT }}
       >
         <div className="flex items-center h-6">
           <div className="w-8 px-2">
             {flow.from === "s" ? (
-              <ArrowCircleLeftIcon className="fill-green-700" />
+              <ArrowCircleLeftIcon className="fill-green-700 dark:fill-green-400" />
             ) : (
-              <ArrowCircleRightIcon className="fill-red-700" />
+              <ArrowCircleRightIcon className="fill-red-700 dark:fill-red-400" />
             )}
           </div>
           <div style={{ width: 200 }}>
             {formatted_time}
-            <span className="text-gray-400 pl-3">{delta_time}ms</span>
+            <span className="text-gray-400 pl-3 dark:text-zinc-500">{delta_time}ms</span>
           </div>
           <button
-            className="bg-gray-200 py-1 px-2 rounded-md text-sm"
+            className="bg-gray-200 py-1 px-2 rounded-md text-sm dark:bg-zinc-700 dark:text-zinc-100"
             onClick={async () => {
               window.open(
                 "https://gchq.github.io/CyberChef/#input=" +
@@ -275,7 +275,7 @@ function Flow({ full_flow, flow, flow_item_index, delta_time, id }: FlowProps) {
           </button>
           {flowType == "Web" && flowBody && (
             <button
-              className="bg-gray-200 py-1 px-2 rounded-md text-sm ml-2"
+              className="bg-gray-200 py-1 px-2 rounded-md text-sm ml-2 dark:bg-zinc-700 dark:text-zinc-100"
               onClick={async () => {
                 window.open(
                   "https://gchq.github.io/CyberChef/#input=" +
@@ -287,7 +287,7 @@ function Flow({ full_flow, flow, flow_item_index, delta_time, id }: FlowProps) {
             </button>
           )}
           <button
-            className="bg-gray-200 py-1 px-2 rounded-md text-sm ml-2"
+            className="bg-gray-200 py-1 px-2 rounded-md text-sm ml-2 dark:bg-zinc-700 dark:text-zinc-100"
             onClick={async () => {
               const blob = new Blob([Buffer.from(flow.b64, "base64")], {
                 type: "application/octet-stream",
@@ -307,7 +307,7 @@ function Flow({ full_flow, flow, flow_item_index, delta_time, id }: FlowProps) {
           </button>
           {flowType == "Web" && flowBody && (
             <button
-              className="bg-gray-200 py-1 px-2 rounded-md text-sm ml-2"
+              className="bg-gray-200 py-1 px-2 rounded-md text-sm ml-2 dark:bg-zinc-700 dark:text-zinc-100"
               onClick={async () => {
                 const blob = new Blob([flowBody[1]], {
                   type: flowBody[0].toString(),
@@ -330,7 +330,7 @@ function Flow({ full_flow, flow, flow_item_index, delta_time, id }: FlowProps) {
             options={displayOptions}
             value={displayOption}
             onChange={setDisplayOption}
-            className="flex gap-2 text-gray-800 text-sm mr-4 ml-auto"
+            className="flex gap-2 text-gray-800 text-sm mr-4 ml-auto dark:text-zinc-100"
           />
         </div>
       </div>
@@ -356,6 +356,81 @@ function Flow({ full_flow, flow, flow_item_index, delta_time, id }: FlowProps) {
   );
 }
 
+function LatencyMetrics ({flow}: {flow: FullFlow}) {
+  const stats = useMemo(() => {
+  const responseTimes: number[] = [];
+  let totalBytes = 0;
+
+  for (const section of flow.flow) {
+    if (section.type !== "raw") continue;
+
+    const messages = section.flow;
+
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+
+      totalBytes += new TextEncoder().encode(msg.data).length;
+
+      if (msg.from !== "s") continue;
+
+      const nextClient = messages.slice(i + 1).find(m => m.from === "c");
+
+      if (nextClient) {
+        responseTimes.push(nextClient.time - msg.time);
+      }
+    }
+  }
+
+  const totalTime = responseTimes.reduce((a, b) => a + b, 0);
+
+  const averageResponseTime =
+    responseTimes.length > 0 ? totalTime / responseTimes.length : 0;
+
+  const jitter =
+    responseTimes.length > 1
+      ? responseTimes
+          .slice(1)
+          .reduce(
+            (sum, current, i) => sum + Math.abs(current - responseTimes[i]),
+            0
+          ) / (responseTimes.length - 1)
+      : 0;
+
+  const throughput =
+    totalTime > 0
+      ? totalBytes / (totalTime / 1000) // byte/s
+      : 0;
+
+  const minResponseTime =
+    responseTimes.length > 0 ? Math.min(...responseTimes) : 0;
+
+  const maxResponseTime =
+    responseTimes.length > 0 ? Math.max(...responseTimes) : 0;
+
+  return {
+    averageResponseTime,
+    minResponseTime,
+    maxResponseTime,
+    jitter,
+    throughput,
+    totalBytes,
+    totalTime,
+    responseTimes,
+  };
+}, [flow.flow]);
+  return (
+    <div>
+      <ul>
+        <li>Avg: {stats.averageResponseTime} ms</li>
+        <li>Jitter: {stats.jitter} ms</li>
+        <li>Throughput: {stats.throughput} byte/ms</li>
+        <li>Total bytes: {stats.totalBytes} B</li>
+        <li>Total time: {stats.totalTime} ms</li>
+      </ul>
+    </div>
+  )
+}
+
 // Helper function to format the IP for display. If the IP contains ":",
 // assume it is an ipv6 address and surround it in square brackets
 function formatIP(ip: string) {
@@ -370,7 +445,7 @@ function FlowOverview({ flow }: { flow: FullFlow }) {
   return (
     <div>
       {flow.signatures?.length > 0 ? (
-        <div className="bg-blue-200 p-2">
+        <div className="bg-blue-200 p-2 dark:bg-zinc-800 dark:text-zinc-100 dark:border-l-4 dark:border-blue-500">
           <div className="font-extrabold">Suricata</div>
           <div className="pl-2">
             {flow.signatures.map((sig) => {
@@ -389,8 +464,8 @@ function FlowOverview({ flow }: { flow: FullFlow }) {
                     <div
                       className={
                         sig.action === "blocked"
-                          ? "font-bold text-red-800"
-                          : "font-bold text-green-800"
+                          ? "font-bold text-red-800 dark:text-red-300"
+                          : "font-bold text-green-800 dark:text-green-300"
                       }
                     >
                       {sig.action}
@@ -402,7 +477,7 @@ function FlowOverview({ flow }: { flow: FullFlow }) {
           </div>
         </div>
       ) : undefined}
-      <div className="bg-yellow-200 p-2">
+      <div className="bg-yellow-200 p-2 dark:bg-zinc-800 dark:text-zinc-100 dark:border-l-4 dark:border-amber-500">
         <div className="font-extrabold">Meta</div>
         <div className="pl-2">
           <div>
@@ -475,6 +550,10 @@ function FlowOverview({ flow }: { flow: FullFlow }) {
               <span className="italic">({flow.duration} ms)</span>
             </div>
           </div>
+        </div>
+        <div className="font-extrabold">Latency metrics</div>
+        <div className={"pl-2"}>
+          <LatencyMetrics flow={flow} />
         </div>
       </div>
     </div>
@@ -611,13 +690,13 @@ export function FlowView() {
   return (
     <div>
       <div
-        className="sticky shadow-md top-0 bg-white overflow-auto border-b border-b-gray-200 flex"
+        className="sticky shadow-md top-0 bg-white overflow-auto border-b border-b-gray-200 flex dark:bg-zinc-900 dark:border-b-zinc-800 dark:shadow-black/30"
         style={{ height: SECONDARY_NAVBAR_HEIGHT, zIndex: 100 }}
       >
         {(flow?.child_id != null || flow?.parent_id != null) ? (
           <div className="flex align-middle p-2 gap-3">
             <button
-              className="bg-yellow-700 text-white px-2 text-sm rounded-md disabled:opacity-50"
+              className="bg-yellow-700 text-white px-2 text-sm rounded-md disabled:opacity-50 dark:bg-amber-600 dark:text-amber-50"
               key={"parent" + flow.parent_id}
               disabled={flow?.parent_id === null}
               onMouseDown={(e) => {
@@ -631,7 +710,7 @@ export function FlowView() {
               <ArrowCircleUpIcon className="inline-flex items-baseline w-5 h-5"></ArrowCircleUpIcon> Parent
             </button>
             <button
-              className="bg-yellow-700 text-white px-2 text-sm rounded-md disabled:opacity-50"
+              className="bg-yellow-700 text-white px-2 text-sm rounded-md disabled:opacity-50 dark:bg-amber-600 dark:text-amber-50"
               key={"child" + flow.child_id}
               disabled={flow?.child_id === null}
               onMouseDown={(e) => {
@@ -651,7 +730,7 @@ export function FlowView() {
           <select
             id="repr-select"
             value={reprId}
-            className="border-2 border-gray-700 text-black px-2 text-sm rounded-md"
+            className="border-2 bg-transparent border-gray-700 text-black px-2 text-sm rounded-md dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
             onChange={(e) => {
               const target = e.target as HTMLSelectElement;
               const newreprid = parseInt(target.value);
@@ -661,7 +740,7 @@ export function FlowView() {
             {flow?.flow.map((e, i) => <option key={id + "reprselect" + i} value={i}>{e["type"]}</option>)}
           </select>
           {reprId > 0 ? <button
-            className="bg-gray-700 text-white px-2 text-sm rounded-md"
+            className="bg-gray-700 text-white px-2 text-sm rounded-md dark:bg-zinc-700 dark:text-zinc-100"
             title="Diff this representation with the base"
             onClick={(e) => {
               searchParams.set(FIRST_DIFF_KEY, `${id}`);
@@ -672,7 +751,7 @@ export function FlowView() {
             <LightningBoltIcon className="h-5 w-5"></LightningBoltIcon>
           </button> : undefined}
           <button
-            className="bg-gray-700 text-white px-2 text-sm rounded-md disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-100"
+            className="bg-gray-700 text-white px-2 text-sm rounded-md dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-50"
             onClick={copyPwn}
             disabled={pwnButtonDisabled}
           >
@@ -680,7 +759,7 @@ export function FlowView() {
           </button>
 
           <button
-            className="bg-gray-700 text-white px-2 text-sm rounded-md disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-100"
+            className="bg-gray-700 text-white px-2 text-sm rounded-md dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-50"
             onClick={copyRequests}
             disabled={requestsButtonDisabled}
           >

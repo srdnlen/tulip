@@ -23,6 +23,7 @@ import {
 import { getTickStuff } from "../tick";
 import { useAppSelector } from "../store";
 import { tagToColor } from "./Tag";
+import { usePrefersDarkMode } from "../hooks/usePrefersDarkMode";
 
 interface TickInfoData {
   startTick: number;
@@ -40,6 +41,17 @@ interface GraphProps {
   setSearchParams: (a: URLSearchParams) => void;
   onClickNavigate: (a: string) => void;
   tickInfoData: TickInfoData
+  prefersDarkMode: boolean;
+}
+
+function getApexTheme(prefersDarkMode: boolean) {
+  const mode: "dark" | "light" = prefersDarkMode ? "dark" : "light";
+
+  return {
+    mode,
+    foreColor: prefersDarkMode ? "#d4d4d8" : "#3f3f46",
+    gridBorderColor: prefersDarkMode ? "#3f3f46" : "#e5e7eb",
+  };
 }
 
 export const Corrie = () => {
@@ -49,6 +61,7 @@ export const Corrie = () => {
   const filterFlags = useAppSelector((state) => state.filter.filterFlags);
   const filterFlagids = useAppSelector((state) => state.filter.filterFlagids);
   const tagIntersectionMode = useAppSelector((state) => state.filter.tagIntersectionMode);
+  const [prefersDarkMode] = usePrefersDarkMode();
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -67,8 +80,8 @@ export const Corrie = () => {
     setSearchParams(searchParams);
   };
 
-  const inactiveButtonClass = "bg-blue-100 text-gray-800 rounded-md px-2 py-1";
-  const activeButtonClass = `${inactiveButtonClass} ring-2 ring-gray-500`;
+  const inactiveButtonClass = "bg-blue-100 text-gray-800 rounded-md px-2 py-1 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-1 dark:ring-blue-300/10";
+  const activeButtonClass = `${inactiveButtonClass} ring-2 ring-gray-500 dark:ring-blue-300`;
 
   const navigate = useNavigate();
   const onClickNavigate = useCallback(
@@ -145,11 +158,12 @@ export const Corrie = () => {
     setSearchParams: setSearchParams,
     onClickNavigate: onClickNavigate,
     tickInfoData: { startTick, endTick, flagLifetime, unixTimeToTick, tickToUnixTime },
+    prefersDarkMode,
   };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="text-sm bg-white border-b-gray-300 border-b shadow-md flex flex-col">
+      <div className="text-sm bg-white border-b-gray-300 border-b shadow-md flex flex-col dark:bg-zinc-900 dark:border-b-zinc-800 dark:shadow-black/30">
         <div className="p-2 flex space-x-2" style={{ height: 50 }}>
           <a className="text-center px-2 py-2">Correlation mode: </a>
           <button
@@ -210,6 +224,7 @@ function BarPerTickGraph(graphProps: GraphProps, mode: string) {
   let startTick = graphProps.tickInfoData.startTick;
   let endTick = graphProps.tickInfoData.endTick;
   let tickToUnixTime = graphProps.tickInfoData.tickToUnixTime;
+  const chartTheme = getApexTheme(graphProps.prefersDarkMode);
 
   const SEARCH_CAP = 50;
   const DEFAULT_CAP = 15;
@@ -229,6 +244,7 @@ function BarPerTickGraph(graphProps: GraphProps, mode: string) {
       }
     },
     grid: {
+      borderColor: chartTheme.gridBorderColor,
       position: "back",
       xaxis: {
         lines: {
@@ -261,6 +277,7 @@ function BarPerTickGraph(graphProps: GraphProps, mode: string) {
       }
     },
     tooltip: {
+      theme: chartTheme.mode,
       x: {
         formatter: function (v) {
           return "Tick " + v;
@@ -268,6 +285,8 @@ function BarPerTickGraph(graphProps: GraphProps, mode: string) {
       }
     },
     chart: {
+      background: "transparent",
+      foreColor: chartTheme.foreColor,
       animations: {
         enabled: false
       },
@@ -283,6 +302,9 @@ function BarPerTickGraph(graphProps: GraphProps, mode: string) {
           }
         },
       },
+    },
+    theme: {
+      mode: chartTheme.mode,
     },
   };
 
@@ -332,6 +354,7 @@ function TimePacketGraph(graphProps: GraphProps) {
   const searchParams = graphProps.searchParams;
   const setSearchParams = graphProps.setSearchParams;
   const onClickNavigate = graphProps.onClickNavigate;
+  const chartTheme = getApexTheme(graphProps.prefersDarkMode);
 
   const series: ApexAxisChartSeries = [
     {
@@ -351,6 +374,7 @@ function TimePacketGraph(graphProps: GraphProps) {
       enabled: false,
     },
     grid: {
+      borderColor: chartTheme.gridBorderColor,
       xaxis: {
         lines: {
           show: true,
@@ -369,6 +393,8 @@ function TimePacketGraph(graphProps: GraphProps) {
       return flow.id;
     }),
     chart: {
+      background: "transparent",
+      foreColor: chartTheme.foreColor,
       animations: {
         enabled: false,
       },
@@ -388,6 +414,12 @@ function TimePacketGraph(graphProps: GraphProps) {
         },
       },
     },
+    tooltip: {
+      theme: chartTheme.mode,
+    },
+    theme: {
+      mode: chartTheme.mode,
+    },
   };
 
   return (
@@ -406,6 +438,7 @@ function VolumeGraph(graphProps: GraphProps) {
   const mode = graphProps.mode;
   const searchParams = graphProps.searchParams;
   const setSearchParams = graphProps.setSearchParams;
+  const chartTheme = getApexTheme(graphProps.prefersDarkMode);
 
   function chunkData(flowList: Flow[]) {
     let ret: any = [];
@@ -441,6 +474,7 @@ function VolumeGraph(graphProps: GraphProps) {
       enabled: false,
     },
     grid: {
+      borderColor: chartTheme.gridBorderColor,
       xaxis: {
         lines: {
           show: true,
@@ -459,6 +493,8 @@ function VolumeGraph(graphProps: GraphProps) {
       return flow.id;
     }),
     chart: {
+      background: "transparent",
+      foreColor: chartTheme.foreColor,
       animations: {
         enabled: false,
       },
@@ -472,6 +508,12 @@ function VolumeGraph(graphProps: GraphProps) {
         },
       },
     },
+    tooltip: {
+      theme: chartTheme.mode,
+    },
+    theme: {
+      mode: chartTheme.mode,
+    },
   };
 
   return <ReactApexChart options={options} series={series_out} type="line" />;
@@ -483,6 +525,7 @@ function UnderAttackGraph(graphProps: GraphProps) {
   const tickToUnixTime = tickInfoData.tickToUnixTime;
   const searchParams = graphProps.searchParams;
   const setSearchParams = graphProps.setSearchParams;
+  const chartTheme = getApexTheme(graphProps.prefersDarkMode);
 
   const options: ApexOptions = {
     plotOptions: {
@@ -493,6 +536,7 @@ function UnderAttackGraph(graphProps: GraphProps) {
       },
     },
     tooltip: {
+      theme: chartTheme.mode,
       custom: (opts) => {
         if (opts.y1 === opts.y2 - 1) return `Tick ${opts.y1}`;
 
@@ -515,6 +559,8 @@ function UnderAttackGraph(graphProps: GraphProps) {
       tickAmount: 0,
     },
     chart: {
+      background: "transparent",
+      foreColor: chartTheme.foreColor,
       animations: {
         enabled: false,
       },
@@ -535,7 +581,13 @@ function UnderAttackGraph(graphProps: GraphProps) {
           setSearchParams(searchParams);
         },
       },
-    }
+    },
+    grid: {
+      borderColor: chartTheme.gridBorderColor,
+    },
+    theme: {
+      mode: chartTheme.mode,
+    },
   };
 
   // TODO: service names between visualizer and tulip don't necessarily match, how should we consider filters?

@@ -104,7 +104,9 @@ services:
     image: ghcr.io/srdnlen/tulip-flagids
     restart: unless-stopped
     build:
-      context: services/flagids
+      context: services/
+      dockerfile: flagids/Dockerfile
+    image: tulip-flagids:latest
     depends_on:
       timescale:
         condition: service_healthy

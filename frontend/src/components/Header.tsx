@@ -24,6 +24,8 @@ import {
   useGetServicesQuery,
 } from "../api";
 import { getTickStuff } from "../tick";
+import {usePrefersDarkMode} from "../hooks/usePrefersDarkMode";
+import { SunIcon, MoonIcon } from "@heroicons/react/solid";
 
 function ServiceSelection() {
   const FILTER_KEY = SERVICE_FILTER_KEY;
@@ -45,6 +47,7 @@ function ServiceSelection() {
   let [searchParams, setSearchParams] = useSearchParams();
   return (
     <select
+      className={"w-48"}
       value={searchParams.get(FILTER_KEY) ?? ""}
       onChange={(event) => {
         let serviceFilter = event.target.value;
@@ -62,6 +65,26 @@ function ServiceSelection() {
         </option>
       ))}
     </select>
+  );
+}
+
+function DarkModeSwitch() {
+  const [prefersDarkMode, setPrefersDarkMode] = usePrefersDarkMode();
+
+  return (
+    <button
+      onClick={() => setPrefersDarkMode(prev => !prev)}
+        className={`w-9 flex justify-center px-0 bg-gray-200 py-1 rounded-md border border-transparent placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 whitespace-nowrap ${
+          prefersDarkMode ? "bg-amber-300/20 text-zinc-100 border-zinc-600" : "bg-gray-200 text-gray-900"
+        }`}
+      aria-label="Toggle dark mode"
+    >
+      {prefersDarkMode ? (
+        <SunIcon className="w-6 h-6 text-yellow-400" />
+      ) : (
+        <MoonIcon className="w-6 h-6 text-gray-800" />
+      )}
+    </button>
   );
 }
 
@@ -160,7 +183,7 @@ function FirstDiff() {
   return (
     <input
       type="text"
-      className="md:w-72"
+      className="w-56 box-border"
       placeholder="First Diff ID"
       readOnly
       value={firstFlow}
@@ -203,8 +226,8 @@ function SecondDiff() {
   return (
     <input
       type="text"
-      className="md:w-72"
-      placeholder="Second Flow ID"
+      className="w-56 box-border"
+      placeholder="Second Diff ID"
       readOnly
       value={secondFlow}
       onClick={(event) => setSecondDiffFlow()}
@@ -235,7 +258,7 @@ function Diff() {
 
   return (
     <button
-      className=" bg-amber-100 text-gray-800 rounded-md px-2 py-1"
+      className="whitespace-nowrap bg-amber-100 text-gray-800 rounded-md px-2 py-1 dark:bg-amber-500/20 dark:text-amber-100 dark:ring-1 dark:ring-amber-300/20"
       onClick={() => {
         navigateToDiff()
       }}
@@ -279,42 +302,35 @@ export function Header() {
       <div>
         <EndDateSelection></EndDateSelection>
       </div>
-      <div>
-        <button
-          className=" bg-amber-100 text-gray-800 rounded-md px-2 py-1"
-          onClick={() => setToLastnTicks(5)}
-        >
-          Last 5 ticks
-        </button>
-      </div>
+      <button
+        className="whitespace-nowrap bg-amber-100 text-gray-800 rounded-md px-2 py-1 dark:bg-amber-500/20 dark:text-amber-100 dark:ring-1 dark:ring-amber-300/20"
+        onClick={() => setToLastnTicks(5)}
+      >
+        Last 5 ticks
+      </button>
       <Link to={`/corrie?${searchParams}`}>
-        <div className="bg-blue-100 text-gray-800 rounded-md px-2 py-1">
+        <div className="whitespace-nowrap bg-blue-100 text-gray-800 rounded-md px-2 py-1 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-1 dark:ring-blue-300/10">
           Graph view
         </div>
       </Link>
-      <div className="ml-auto mr-4" style={{ display: "flex" }}>
-        <div className="mr-4">
-          <FirstDiff />
-        </div>
-        <div className="mr-4">
-          <SecondDiff />
-        </div>
-        <div className="mr-6">
-          <Suspense>
-            <Diff />
-          </Suspense>
-        </div>
-        <div
-          className="ml-auto"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignContent: "center",
-            flexDirection: "column",
-          }}
-        >
-          Current: {currentTick}
-        </div>
+      <FirstDiff />
+      <SecondDiff />
+      <Suspense>
+        <Diff />
+      </Suspense>
+      <div
+        className="ml-auto"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignContent: "center",
+          flexDirection: "column",
+        }}
+      >
+        Current: {currentTick}
+      </div>
+      <div className="mr-4">
+          <DarkModeSwitch />
       </div>
     </>
   );

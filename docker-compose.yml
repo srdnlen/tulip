@@ -2,7 +2,7 @@ version: "3.5"
 services:
   timescale:
     build: services/timescale
-    image: ghcr.io/srdnlen/tulip-timescale
+    # image: ghcr.io/srdnlen/tulip-timescale
     restart: unless-stopped
     volumes:
       - timescale-data:/var/lib/postgresql/data
@@ -26,7 +26,7 @@ services:
       start_period: 10s
 
   frontend:
-    image: ghcr.io/srdnlen/tulip-frontend
+    # image: ghcr.io/srdnlen/tulip-frontend
     build:
       context: frontend
       dockerfile: Dockerfile-frontend
@@ -74,7 +74,7 @@ services:
       GF_INSTALL_PLUGINS: grafana-clock-panel
 
   api:
-    image: ghcr.io/srdnlen/tulip-api
+    # image: ghcr.io/srdnlen/tulip-api
     build:
       context: services/api
       dockerfile: Dockerfile-api
@@ -101,12 +101,12 @@ services:
       start_period: 20s
 
   flagids:
-    image: ghcr.io/srdnlen/tulip-flagids
+    # image: ghcr.io/srdnlen/tulip-flagids
     restart: unless-stopped
     build:
       context: services/
       dockerfile: flagids/Dockerfile
-    image: tulip-flagids:latest
+    # image: tulip-flagids:latest
     depends_on:
       timescale:
         condition: service_healthy
@@ -123,7 +123,7 @@ services:
       DUMP_PCAPS: ${DUMP_PCAPS}
 
   assembler:
-    image: ghcr.io/srdnlen/tulip-assembler
+    # image: ghcr.io/srdnlen/tulip-assembler
     build:
       context: services/go-importer
       dockerfile: Dockerfile-assembler
@@ -161,7 +161,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   enricher:
-    image: ghcr.io/srdnlen/tulip-enricher
+    # image: ghcr.io/srdnlen/tulip-enricher
     build:
       context: services/go-importer
       dockerfile: Dockerfile-enricher
@@ -193,7 +193,7 @@ services:
       start_period: 5s
 
   suricata:
-    image: ghcr.io/srdnlen/tulip-suricata
+    # image: ghcr.io/srdnlen/tulip-suricata
     build:
       context: suricata
       dockerfile: Dockerfile.suricata

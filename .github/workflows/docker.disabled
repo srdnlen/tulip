@@ -5,7 +5,7 @@ name: Publish docker images
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - 'services/**'
       - 'frontend/**'
@@ -71,10 +71,6 @@ jobs:
         id: lowercase
         run: |
           echo "repository=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
-      - name: Convert repository name to lowercase
-        id: lowercase
-        run: echo "image_name=${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]' >> $GITHUB_OUTPUT
 
       - name: Extract metadata
         id: meta

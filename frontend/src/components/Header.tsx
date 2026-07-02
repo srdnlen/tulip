@@ -183,7 +183,7 @@ function FirstDiff() {
   return (
     <input
       type="text"
-      className="md:w-56"
+      className="w-56 box-border"
       placeholder="First Diff ID"
       readOnly
       value={firstFlow}
@@ -226,7 +226,7 @@ function SecondDiff() {
   return (
     <input
       type="text"
-      className="md:w-56"
+      className="w-56 box-border"
       placeholder="Second Diff ID"
       readOnly
       value={secondFlow}
@@ -302,45 +302,35 @@ export function Header() {
       <div>
         <EndDateSelection></EndDateSelection>
       </div>
-      <div>
-        <button
-          className="whitespace-nowrap bg-amber-100 text-gray-800 rounded-md px-2 py-1 dark:bg-amber-500/20 dark:text-amber-100 dark:ring-1 dark:ring-amber-300/20"
-          onClick={() => setToLastnTicks(5)}
-        >
-          Last 5 ticks
-        </button>
-      </div>
+      <button
+        className="whitespace-nowrap bg-amber-100 text-gray-800 rounded-md px-2 py-1 dark:bg-amber-500/20 dark:text-amber-100 dark:ring-1 dark:ring-amber-300/20"
+        onClick={() => setToLastnTicks(5)}
+      >
+        Last 5 ticks
+      </button>
       <Link to={`/corrie?${searchParams}`}>
         <div className="whitespace-nowrap bg-blue-100 text-gray-800 rounded-md px-2 py-1 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-1 dark:ring-blue-300/10">
           Graph view
         </div>
       </Link>
-      <div className="flex-1" style={{ display: "flex" }}>
-        <div className="mr-3">
-          <FirstDiff />
-        </div>
-        <div className="mr-4">
-          <SecondDiff />
-        </div>
-        <div className="mr-4">
-          <Suspense>
-            <Diff />
-          </Suspense>
-        </div>
-        <div
-          className="mr-4 ml-auto"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignContent: "center",
-            flexDirection: "column",
-          }}
-        >
-          Current: {currentTick}
-        </div>
-        <div className="mr-4">
-            <DarkModeSwitch />
-        </div>
+      <FirstDiff />
+      <SecondDiff />
+      <Suspense>
+        <Diff />
+      </Suspense>
+      <div
+        className="ml-auto"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignContent: "center",
+          flexDirection: "column",
+        }}
+      >
+        Current: {currentTick}
+      </div>
+      <div className="mr-4">
+          <DarkModeSwitch />
       </div>
     </>
   );

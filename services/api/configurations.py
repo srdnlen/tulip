@@ -47,4 +47,3 @@ helper = '''
 '''
 
 services = [{"ip": x.split(" ")[0].split(":")[0], "port": int(x.split(" ")[0].split(":")[1]), "name": " ".join(x.split(" ")[1:])} for x in helper.strip().split("\n")]
-services += [{"ip": vm_ip_1, "port": -1, "name": "other"}]

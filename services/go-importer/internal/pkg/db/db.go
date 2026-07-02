@@ -593,6 +593,8 @@ func (db *Database) FingerprintsFlush() {
 type FlagId struct {
 	Id int32
 	Content string
+	Flagstore string
+	Dst_port *uint16
 	Time time.Time
 }
 

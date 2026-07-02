@@ -28,18 +28,18 @@ const generateShortcutTable = (data: { key: string; action: string; }[][]) => {
   return (
         <div className="flex flex-row gap-4">
           {data.map((table, tableIndex) => (
-            <table key={tableIndex} className="border-collapse border border-slate-500 table-auto">
+            <table key={tableIndex} className="border-collapse border border-slate-500 table-auto dark:border-zinc-600">
               <thead>
                 <tr>
-                  <th className="border border-slate-600 px-4">Key</th>
-                  <th className="border border-slate-600 px-4">Action</th>
+                  <th className="border border-slate-600 px-4 dark:border-zinc-500">Key</th>
+                  <th className="border border-slate-600 px-4 dark:border-zinc-500">Action</th>
                 </tr>
               </thead>
               <tbody>
               {table.map((row, rowIndex) => (
                 <tr key={rowIndex}>
                   {Object.entries(row).map((cell, cellIndex) => (
-                    <td className="border border-slate-700 px-4" key={cellIndex}>
+                    <td className="border border-slate-700 px-4 dark:border-zinc-600" key={cellIndex}>
                       {cell[1]}
                     </td>
                   ))}
@@ -55,10 +55,10 @@ const generateShortcutTable = (data: { key: string; action: string; }[][]) => {
 
 export function Home() {
   return (
-    <div className="p-4 flex flex-col gap-4 justify-center items-center h-full opacity-40">
+    <div className="p-4 flex flex-col gap-4 justify-center items-center h-full opacity-40 dark:opacity-60">
       <span className="text-9xl">🌷</span>
-      <h1 className="text-5xl text-gray-600">Welcome to Tulip</h1>
-      <h1 className="text-2xl text-gray-500">Shortcut reference:</h1>
+      <h1 className="text-5xl text-gray-600 dark:text-zinc-200">Welcome to Tulip</h1>
+      <h1 className="text-2xl text-gray-500 dark:text-zinc-400">Shortcut reference:</h1>
       {generateShortcutTable(shortcutTableData)}
       {/* <h1 className="text-3xl font-bold pt-2 pb-4"></h1> */}
     </div>

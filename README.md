@@ -1,29 +1,17 @@
 # 🌷 Tulip
 
 Tulip is a flow analyzer meant for use during Attack / Defence CTF competitions. It allows players to easily find some traffic related to their service and automatically generates python snippets to replicate attacks.
-
 ## Origins
-Tulip was developed by Team Europe for use in the first International Cyber Security Challenge. The project is a fork of [flower](https://github.com/secgroup/flower), but it contains quite some changes:
-* New front-end (typescript / react / tailwind)
-* New ingestor code, based on gopacket
-* IPv6 support
-* Vastly improved filter and tagging system.
-* Deep links for easy collaboration
-* Added an http decoding pass for compressed data
-* Synchronized with Suricata.
-* Flow diffing
-* Time and size-based plots for correlation.
-* Linking HTTP sessions together based on cookies (Experimental*, disabled by default)
-* PCAP-over-IP with BPF filtering support**
 
-\* - to enable, add `-experimental` after `./assembler` in `docker-compose.yml`
+This is [Srdnlen's](https://github.com/srdnlen) official fork of Tulip, a tool originally developed by the [European Cybersecurity Team](https://github.com/OpenAttackDefense/tulip).
 
-\*\* - to enable, configure PCAP-over-IP server (e.g. [pcap-broker](https://github.com/fox-it/pcap-broker) as suggested in [PR 24](https://github.com/OpenAttackDefenseTools/tulip/pull/24)) and set `PCAP_OVER_IP` (and `BPF` if necessary) in `.env`
+We would also like to thank [Lorenzo Leonardini](https://github.com/LorenzoLeonardini/tulip) for some of the commits that were merged into this version.
 
-## Screenshots
-![](./demo_images/demo1.png)
-![](./demo_images/demo2.png)
-![](./demo_images/demo3.png)
+Srdnlen's version of Tulip adds some features to the original tool, namely:
+
+1. The exposition of a metrics endpoint at `/api/stats`, useful for integration with other measurement tools, like Grafana
+2. The refactoring of the `api` microservice, to use `uv` instead of `pip`
+3. The support for usage of suricata and the assembler microservice with PCAP-Over-IP
 
 ## Configuration
 Before starting the stack, edit `services/api/configurations.py`:
@@ -35,10 +23,17 @@ services = [{"ip": vm_ip, "port": 18080, "name": "BIOMarkt"},
 ]
 ```
 
-You can also edit this during the CTF, just rebuild the `api` service:
+
+> After the grace period, be sure to set the correct mappings between flagstores and services in
+`services/flagids/flagids.py`.
+
+
+You can also edit this during the CTF, just rebuild the `api` service in the first case, or the `flagids` service in the second case:
 ```
 docker-compose up --build -d api
+docker-compose up --build -d flagids
 ```
+
 
 ## Usage
 
@@ -48,59 +43,98 @@ cp .env.example .env
 # < Edit the .env file with your favourite text editor >
 docker-compose up -d --build
 ```
-To ingest traffic, it is recommended to create a shared bind mount with the docker-compose. One convenient way to set this up is as follows:
-1. On the vulnbox, start a rotating packet sniffer (e.g. tcpdump, suricata, ...)
-```bash
-tcpdump -i eth0 -G 180 -w "traffic_%H:%M:%S.pcap" port 8080
+
+### Traffic Ingestion (PCAP-Over-IP)
+
+To ingest traffic, the recommended approach requires using [PCAP-Over-IP](https://en.wikipedia.org/wiki/PCAP-over-IP) to dump traffic info directly from a socket. The steps to do this are:
+
+1. Setup a pcap-broker that dumps PCAPs from a machine to a `TCP` port. The suggested tool is [UlisseLab's pcap-broker](https://github.com/UlisseLab/pcap-broker)
+2. Configure the `PCAP_OVER_IP` env var under `.env` to point to the `IP:PORT` of the pcap-broker:
+```env
+PCAP_OVER_IP=10.x.x.x:yyyy
 ```
-2. Using rsync, copy complete captures to the machine running tulip (e.g. to /traffic)
+3. Start the stack. Tulip should be able to ingest traffic directly from the supplied port
+
+
+### Traffic Ingestion (File)
+
+If you prefer to read files directly, it is recommended to create a shared bind mount with the docker-compose. One convenient way to set this up is as follows:
+1. Create a directory where pcaps will be saved:
 ```bash
-rsync -avz -e ssh --progress root@10.0.0.2:/pcaps ./pcaps
+mkdir ./pcaps
 ```
-3. Add a bind to the assembler service so it can read /traffic
-   > (Just change `TRAFFIC_DIR_HOST` in `.env`)
+2. Run the following command:
+```bash
+ssh -q root@<vulnbox_ip> "tcpdump -i <game_interface> -U -s 0 -w - port <service_1_port> or <service_2_port> ..." | tcpdump -U -r - -G 180 -w "./pcaps/traffic_%H:%M:%S.pcap"
+```
+3. Change `TRAFFIC_DIR_HOST` in `.env` to match the directory where pcaps are dumped (`./pcaps`)
+
+You can fine-tune the command at `2.` in this way:
+1. Change `vulnbox_ip` to the IP of the machine of which you would like to dump the traffic
+2. Change `game_interface` to the interface receiving the traffic on the target machine
+3. Change `port <X> or port <Y> ...` according to BPF filter rules. For example, if you only care about HTTP(S) traffic, you can edit that part like `port 80 or port 443`
+4. If you want, edit `-G 180` to customize pcap file rotation. The default option creates a new pcap dump every 3 minutes.
+
+> [!WARNING]
+>
+> This configuration won't work if the architectures of the machines running tulip and tcpdump (the vulnbox) differ! In that case, refer to the [original guide](https://github.com/OpenAttackDefenseTools/tulip/tree/master#usage)
+
+> [!WARNING]
+>
+> Srdnlen's fork does not support using Suricata when pcaps are dumped to files, as it only works in PCAP-over-IP mode. See below for further details.
 
 The ingestor will use inotify to watch for new pcap's and suricata logs. No need to set a chron job.
 
-
 ## Suricata synchronization
 
-### Run in Docker
+### Initial configuration
 
-Configure `SURICATA_DIR_HOST` in `.env`.
+> [!WARNING]
+>
+> Srdnlen's fork does not support using Suricata when pcaps are dumped to files, as it only works in PCAP-over-IP mode. See below for further details.
 
-Create some rules (404 for testing):
+Configure `SURICATA_DIR_HOST` and `PCAP_OVER_IP` in `.env`.
+
+Create the required directories for suricata files:
+
 ```bash
 . .env
-mkdir -p ${SURICATA_DIR_HOST}/{etc,lib/rules,log}
-echo 'alert tcp any any -> any any (msg: "404 Not Found"; http.stat_code; content:"404"; metadata: tag notfound; sid:4; rev: 1;)' >> ${SURICATA_DIR_HOST}/lib/rules/suricata.rules
+mkdir -p ${SURICATA_DIR_HOST}/{etc,lib/rules,log,socket}
 ```
 
-After that run (default config for `eve.json` logging was good enough):
+You can then store your rules under `${SURICATA_DIR_HOST}/lib/rules`. Then, you can start the stack like normal.
 
-```bash
-docker compose -f docker-compose-suricata.yml up -d --build
+### Ingestion modes
+
+Srdnlen's fork supports alerts ingestion in two ways:
+
+1. The classical mode, via an `eve.json` file
+2. A faster and lighter mode using unix sockets.
+
+#### Socket Ingestion Mode
+
+To speed up alert propagation and avoid having too big `eve.json` file, you can switch to the socket mode. In order to do this, you must:
+
+1. Edit `ENRICHER_MODE` to `socket` in your `.env`, as well as tune the values of `ENRICHER_WORKERS` and `ENRICHER_BUFFER_SIZE` (check the comments in `.env.example` for more details)
+2. Change your `suricata.yml` to use a `socket` file to propagate alerts:
+```yaml
+- eve-log:
+  enabled: yes
+  filetype: unix_steam #regular|syslog|unix_dgram|unix_stream|redis
+  filename: /var/run/suricata/eve.sock
+```
+3. Change your `docker-compose.yml` to edit the `command` section under the enricher's container:
+```yaml
+volumes:
+    - ${TRAFFIC_DIR_HOST}:${TRAFFIC_DIR_DOCKER}:ro,z
+    - ${SURICATA_DIR_HOST}/socket:/suricata
+command: "./enricher -eve /suricata/eve.sock"
 ```
 
-### Metadata
-Tags are read from the metadata field of a rule. For example, here's a simple rule to detect a path traversal:
-```
-alert tcp any any -> any any (msg: "Path Traversal-../"; flow:to_server; content: "../"; metadata: tag path_traversal; sid:1; rev: 1;)
-```
-Once this rule is seen in traffic, the `path_traversal` tag will automatically be added to the filters in Tulip.
+#### File Ingestion mode
 
-> [!NOTE]
->
-> After editing Suricata rules (renaming or id change) please:
->
-> Remove old logs: `rm ${SURICATA_DIR_HOST}/log/*` (otherwise old signatures will be repopulated).
->
-> Restart Docker containers.
->
-> If database was only restarted (not dropped), try cleaning tags/signatures manually.
-
-### eve.json
 Suricata alerts are read directly from the `eve.json` file. Because this file can get quite verbose when all extensions are enabled, it is recommended to strip the config down a fair bit. For example:
+
 ```yaml
 # ...
   - eve-log:
@@ -119,13 +153,53 @@ Suricata alerts are read directly from the `eve.json` file. Because this file ca
 # ...
 ```
 
+To enable this mode, set `ENRICHER_MODE` to `file` in your `.env` and specify the following configuration inside your `suricata.yml`:
+
+```yaml
+- eve-log:
+  enabled: yes
+  filetype: regular #regular|syslog|unix_dgram|unix_stream|redis
+  filename: /var/log/suricata/eve.json
+```
+
+And, inside your `docker-compose.yml`, change the `command` option under the enricher's container:
+
+```yaml
+volumes:
+    - ${TRAFFIC_DIR_HOST}:${TRAFFIC_DIR_DOCKER}:ro,z
+    - ${SURICATA_DIR_HOST}/socket:/suricata
+    - ${SURICATA_DIR_HOST}/log:/log
+command: "./enricher -eve /log/eve.json"
+```
+
 Sessions with matched alerts will be highlighted in the front-end and include which rule was matched.
 
+> [!WARNING]
+>
+> I/O bottlenecks and file size can significantly slow down Tulip's tagging or crash suricata entirely. If you experience such problems, consider switching to socket mode (described above)
+
+### Metadata
+Tags are read from the metadata field of a rule. For example, here's a simple rule to detect a path traversal:
+```
+alert tcp any any -> any any (msg: "Path Traversal-../"; flow:to_server; content: "../"; metadata: tag path_traversal; sid:1; rev: 1;)
+```
+Once this rule is seen in traffic, the `path_traversal` tag will automatically be added to the filters in Tulip.
+
+> [!NOTE]
+>
+> After editing Suricata rules (renaming or id change) please:
+>
+> Remove old logs: `rm ${SURICATA_DIR_HOST}/log/*` (otherwise old signatures will be repopulated).
+>
+> Restart Docker containers.
+>
+> If database was only restarted (not dropped), try cleaning tags/signatures manually.
+
+
 # Security
+
 Your Tulip instance will probably contain sensitive CTF information, like flags stolen from your machines. If you expose it to the internet and other people find it, you risk losing additional flags. It is recommended to host it on an internal network (for instance behind a VPN) or to put Tulip behind some form of authentication.
 
-# Contributing
-If you have an idea for a new feature, bug fixes, UX improvements, or other contributions, feel free to open a pull request or create an issue!      
-
 # Credits
-Tulip was written by [@RickdeJager](https://github.com/rickdejager) and [@Bazumo](https://github.com/bazumo), with additional help from [@Sijisu](https://github.com/sijisu). Thanks to our fellow Team Europe players and coaches for testing, feedback and suggestions. Finally, thanks to the team behind [flower](https://github.com/secgroup/flower) for opensourcing their tooling.
+
+A special thanks to Tulip's original creator and to pianka for their contribution to this project.

@@ -124,7 +124,10 @@ func reassemblyCallback(entry db.FlowEntry) {
 				}
 				flagids = zwi
 			}
+
 			ApplyFlagids(&entry, flagids)
+		} else {
+			println("[debug] flagid: disabled")
 		}
 
 		// Finally, insert the new entry

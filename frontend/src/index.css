@@ -3,3 +3,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    @apply bg-white text-gray-900 dark:bg-zinc-900 dark:text-zinc-100;
+  }
+
+  input,
+  select,
+  button {
+    @apply transition-colors duration-150;
+  }
+
+  input,
+  select {
+    @apply text-gray-900 dark:text-zinc-100;
+  }
+
+  option {
+    @apply bg-white text-gray-900 dark:bg-zinc-800 dark:text-zinc-100;
+  }
+}

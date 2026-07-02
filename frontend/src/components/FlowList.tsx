@@ -22,7 +22,6 @@ import { toggleFilterTag, toggleTagIntersectMode } from "../store/filter";
 import { HeartIcon, FilterIcon, LinkIcon } from "@heroicons/react/solid";
 import { HeartIcon as EmptyHeartIcon } from "@heroicons/react/outline";
 
-import classes from "./FlowList.module.css";
 import { format } from "date-fns";
 import useDebounce from "../hooks/useDebounce";
 import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
@@ -214,13 +213,13 @@ export function FlowList() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-white border-b-gray-300 border-b shadow-md flex flex-col">
+      <div className="bg-white border-b-gray-300 border-b shadow-md flex flex-col dark:bg-zinc-900 dark:border-b-zinc-800 dark:shadow-black/30">
         <div className="p-2 flex" style={{ height: 50 }}>
           <button
-            className="flex gap-1 items-center text-sm"
+            className="flex gap-1 items-center text-sm text-gray-700 dark:text-zinc-200"
             onClick={() => setShowFilters(!showFilters)}
           >
-            {<FilterIcon height={20} className="text-gray-400"></FilterIcon>}
+            {<FilterIcon height={20} className="text-gray-400 dark:text-zinc-500"></FilterIcon>}
             {showFilters ? "Close" : "Open"} filters
           </button>
           {/* Maybe we want to use a search button instead of live search */}
@@ -231,13 +230,13 @@ export function FlowList() {
           )}
         </div>
         {showFilters && (
-          <div className="border-t-gray-300 border-t p-2">
+          <div className="border-t-gray-300 border-t p-2 dark:border-t-zinc-800">
             <div className="flex">
-              <p className="text-sm font-bold text-gray-600 pb-2">
+              <p className="text-sm font-bold text-gray-600 pb-2 dark:text-zinc-300">
                 Intersection filter
               </p>
               <button
-                className="w-24 h-5 bg-blue-100 text-sm rounded-md ml-auto"
+                className="w-24 h-5 bg-blue-100 text-gray-800 text-sm rounded-md ml-auto dark:bg-blue-500/20 dark:text-blue-100 dark:ring-1 dark:ring-blue-300/10"
                 onClick={() => dispatch(toggleTagIntersectMode())}
               >
                 Mode:&nbsp;{tagIntersectionMode}
@@ -258,11 +257,11 @@ export function FlowList() {
         )}
       </div>
       <div></div>
-      { searchMessage && <div>{searchMessage}</div> }
+      { searchMessage && <div className="px-2 py-1 text-sm text-gray-600 dark:text-zinc-300">{searchMessage}</div> }
       <Virtuoso
         className={classNames({
           "flex-1": true,
-          [classes.list_container]: true,
+          "list_container": true,
           "sidebar-loading": isLoading,
         })}
         data={transformedFlowData}
@@ -313,7 +312,7 @@ function FlowListEntry({ flow, isActive, onHeartClick }: FlowListEntryProps) {
   return (
     <li
       className={classNames({
-        [classes.active]: isActive,
+        "active": isActive,
       })}
     >
       <div className="flex">
@@ -336,22 +335,22 @@ function FlowListEntry({ flow, isActive, onHeartClick }: FlowListEntryProps) {
             <LinkIcon className="text-blue-500" />
           ) : undefined}
         </div>
-        <div className="flex-1 shrink">
-          <div className="flex">
-            <div className="shrink-0">
-              <span className="text-gray-700 font-bold overflow-ellipsis overflow-hidden ">
+        <div className="min-w-0 flex-1 shrink">
+          <div className="flex items-baseline gap-2 pb-1">
+            <div className="min-w-0 flex-1 truncate">
+              <span className="text-gray-700 font-bold overflow-ellipsis overflow-hidden dark:text-zinc-100">
                 {flow.service_tag}
               </span>
-              <span className="text-gray-500">:{flow.dst_port}</span>
+              <span className="text-gray-500 dark:text-zinc-400">:{flow.dst_port}</span>
             </div>
 
-            <div className="ml-2">
-              <span className="text-gray-500">{formatted_time_h_m_s}</span>
-              <span className="text-gray-300">{formatted_time_ms}</span>
+            <div className="shrink-0">
+              <span className="text-gray-500 dark:text-zinc-400">{formatted_time_h_m_s}</span>
+              <span className="text-gray-300 dark:text-zinc-600">{formatted_time_ms}</span>
             </div>
-            <div className="text-gray-500 ml-auto">{duration}</div>
+            <div className="shrink-0 text-gray-500 ml-auto dark:text-zinc-400">{duration}</div>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap pb-1">
             {filtered_tag_list.map((tag) => (
               <Tag key={tag} tag={tag}></Tag>
             ))}

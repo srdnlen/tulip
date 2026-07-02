@@ -358,7 +358,7 @@ function Flow({ full_flow, flow, flow_item_index, delta_time, id }: FlowProps) {
 
 function LatencyMetrics ({flow}: {flow: FullFlow}) {
   const stats = useMemo(() => {
-  const responseTimes = [];
+  const responseTimes: number[] = [];
   let totalBytes = 0;
 
   for (const section of flow.flow) {

@@ -34,22 +34,15 @@ from database import FlowDetail
 
 DISCARD_COOKIES = ["PHPSESSID", "wordpress_logged_in_", "session"]
 
-
 HEADER_TEMPLATE = """#!/usr/bin/env python3
 import os
 import sys
-
 import requests
 
+HOST = "10.60.0.1"
 PORT = {{port}}
-SCHEME = "https" if os.getenv("TARGET_HTTPS", "0") == "1" else "http"
-HOST = (
-    os.getenv("TARGET_IP")
-    or os.getenv("TARGET_HOST")
-    or (sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1")
-)
+SCHEME = "http" # or "https" 
 BASE_URL = f"{SCHEME}://{HOST}:{PORT}"
-TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "5"))
 {% if use_requests_session %}
 s = requests.Session()
 {% endif -%}
@@ -63,7 +56,7 @@ headers_{{request_index}} = {{headers}}
     BASE_URL + {{request_path_repr}},
     headers=headers_{{request_index}},
 {% if data is not none %}    {{data_param_name}}={{payload_name}},
-{% endif %}    timeout=TIMEOUT,
+{% endif %}
 )
 print(r{{request_index}}.text)
 """

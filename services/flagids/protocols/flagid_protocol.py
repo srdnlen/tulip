@@ -7,7 +7,7 @@ from .flagid import FlagId
 class FlagIdProtocol(ABC):
 
     def __init__(self, endpoint: str) -> None:
-        self.endpoint = endpoint
+        self.endpoint = endpoint.strip("/")  # Remove trailing slash if present
 
     @abstractmethod
     def get_services(self) -> set[str]:

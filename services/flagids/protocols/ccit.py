@@ -72,15 +72,16 @@ class CCITFlagIdProtocol(FlagIdProtocol):
             flagstores = self._get_full_flagstores_data()
             mappings: dict[str, list[str]] = {}
             for fs in flagstores:
-                svc_name = "-".join(fs["id"].split("-")[:-1])
-                mappings[svc_name] = mappings.get(svc_name, []) + [fs["id"]]
-            # If only 1 flagstore is present for some service, the flagstore name is
-            # the service name and vice versa.
-            for key in list(mappings.keys()):
-                if len(mappings[key]) == 1:
-                    name = mappings[key][0]
-                    mappings[name] = [name]
-                    del mappings[key]
+                parts = fs["id"].split("-")
+                # If only 1 flagstore is present for some service, the flagstore name is
+                # the service name and vice versa.
+                if len(parts) == 1:
+                    svc_name = fs['id']
+                    # service does not contain a dash, svc_name = flagstore name
+                    mappings[svc_name] = [svc_name]
+                else:
+                    svc_name = "-".join(parts[:-1])
+                    mappings[svc_name] = mappings.get(svc_name, []) + [fs["id"]]
             self._service_flagstores_mappings_cache = mappings
         return {
             service: flagstores.copy()
